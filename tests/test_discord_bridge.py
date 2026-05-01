@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
+from discord import app_commands
 
 from arc.config import ArcConfig, DiscordConfig, DiscordRateLimit
 from arc.discord_bridge import ArcDiscordBot, _RateLimiter
@@ -34,7 +35,20 @@ def _make_bot(cfg: ArcConfig | None = None) -> tuple[ArcDiscordBot, MagicMock]:
     bot_user.id = 42
     bot._connection = MagicMock()
     bot._connection.user = bot_user
+    bot._connection._command_tree = None
+    bot.http = MagicMock()
+    bot.tree = app_commands.CommandTree(bot)
+    bot._register_slash_commands()
     return bot, daemon
+
+
+def _make_interaction(channel_id: str = "9999") -> MagicMock:
+    interaction = MagicMock(spec=discord.Interaction)
+    interaction.channel_id = int(channel_id)
+    interaction.channel = MagicMock(spec=discord.TextChannel)
+    interaction.response = MagicMock()
+    interaction.response.send_message = AsyncMock()
+    return interaction
 
 
 def _make_message(
@@ -246,21 +260,22 @@ async def test_rate_limit_blocks_dispatch(config_dir: Path, coach_agent_yaml: di
     assert daemon.handle_request.await_count == 1
 
 
-# --- /model command ---
+# --- /model slash command ---
 
 
 async def test_model_set(config_dir: Path, coach_agent_yaml: dict) -> None:
     bot, daemon = _make_bot()
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
-    msg = _make_message(bot.user, "/model haiku", channel_id="9999")
+    interaction = _make_interaction(channel_id="9999")
+    cmd = bot.tree.get_command("model")
 
     with patch("arc.discord_bridge.resolve_agent_for_channel", return_value=agent):
-        await bot.on_message(msg)
+        await cmd.callback(interaction, model="haiku")
 
     daemon.set_model_override.assert_called_once_with("9999", "haiku")
-    msg.reply.assert_awaited_once()
-    assert "haiku" in msg.reply.call_args[0][0]
+    interaction.response.send_message.assert_awaited_once()
+    assert "haiku" in interaction.response.send_message.call_args[0][0]
 
 
 async def test_model_reset(config_dir: Path, coach_agent_yaml: dict) -> None:
@@ -268,26 +283,28 @@ async def test_model_reset(config_dir: Path, coach_agent_yaml: dict) -> None:
     daemon.model_overrides["9999"] = "haiku"
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
-    msg = _make_message(bot.user, "/model reset", channel_id="9999")
+    interaction = _make_interaction(channel_id="9999")
+    cmd = bot.tree.get_command("model")
 
     with patch("arc.discord_bridge.resolve_agent_for_channel", return_value=agent):
-        await bot.on_message(msg)
+        await cmd.callback(interaction, model="reset")
 
     daemon.set_model_override.assert_called_once_with("9999", None)
-    assert "reset" in msg.reply.call_args[0][0].lower()
+    assert "reset" in interaction.response.send_message.call_args[0][0].lower()
 
 
 async def test_model_unknown(config_dir: Path, coach_agent_yaml: dict) -> None:
     bot, daemon = _make_bot()
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
-    msg = _make_message(bot.user, "/model gpt-4", channel_id="9999")
+    interaction = _make_interaction(channel_id="9999")
+    cmd = bot.tree.get_command("model")
 
     with patch("arc.discord_bridge.resolve_agent_for_channel", return_value=agent):
-        await bot.on_message(msg)
+        await cmd.callback(interaction, model="gpt-4")
 
     daemon.set_model_override.assert_not_called()
-    assert "not allowed" in msg.reply.call_args[0][0]
+    assert "not allowed" in interaction.response.send_message.call_args[0][0]
 
 
 async def test_model_show_current(config_dir: Path, coach_agent_yaml: dict) -> None:
@@ -295,12 +312,42 @@ async def test_model_show_current(config_dir: Path, coach_agent_yaml: dict) -> N
     daemon.model_overrides["9999"] = "haiku"
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
-    msg = _make_message(bot.user, "/model", channel_id="9999")
+    interaction = _make_interaction(channel_id="9999")
+    cmd = bot.tree.get_command("model")
 
     with patch("arc.discord_bridge.resolve_agent_for_channel", return_value=agent):
-        await bot.on_message(msg)
+        await cmd.callback(interaction, model="")
 
-    assert "haiku" in msg.reply.call_args[0][0]
+    assert "haiku" in interaction.response.send_message.call_args[0][0]
+
+
+async def test_model_autocomplete(config_dir: Path, coach_agent_yaml: dict) -> None:
+    bot, _ = _make_bot()
+    from arc.agents import load_agent
+    agent = load_agent("coach", config_dir)
+    interaction = _make_interaction(channel_id="9999")
+    cmd = bot.tree.get_command("model")
+
+    with patch("arc.discord_bridge.resolve_agent_for_channel", return_value=agent):
+        choices = await cmd._params["model"].autocomplete(interaction, "")
+
+    names = [c.name for c in choices]
+    assert "reset" in names
+    assert "haiku" in names
+    assert "sonnet" in names
+
+
+async def test_model_autocomplete_filters(config_dir: Path, coach_agent_yaml: dict) -> None:
+    bot, _ = _make_bot()
+    from arc.agents import load_agent
+    agent = load_agent("coach", config_dir)
+    interaction = _make_interaction(channel_id="9999")
+    cmd = bot.tree.get_command("model")
+
+    with patch("arc.discord_bridge.resolve_agent_for_channel", return_value=agent):
+        choices = await cmd._params["model"].autocomplete(interaction, "hai")
+
+    assert all("hai" in c.name for c in choices)
 
 
 # --- send_to_default_channel ---

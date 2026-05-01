@@ -5,6 +5,7 @@ import time
 from typing import TYPE_CHECKING
 
 import discord
+from discord import app_commands
 
 from arc.agents import load_agent, resolve_agent_for_channel
 from arc.config import ArcConfig
@@ -42,9 +43,66 @@ class ArcDiscordBot(discord.Client):
         self.config = config
         self.daemon = daemon
         self._rate_limiter = _RateLimiter(config.discord.rate_limit.messages_per_minute)
+        self.tree = app_commands.CommandTree(self)
+        self._register_slash_commands()
+
+    def _register_slash_commands(self) -> None:
+        @self.tree.command(name="model", description="Switch or view the active model for this channel")
+        @app_commands.describe(model="Model to switch to, or 'reset' to restore the agent default")
+        async def model_command(interaction: discord.Interaction, model: str = "") -> None:
+            channel_id = str(interaction.channel_id)
+            agent = resolve_agent_for_channel(channel_id, None)
+            if not agent and isinstance(interaction.channel, discord.Thread):
+                agent = resolve_agent_for_channel(str(interaction.channel.parent_id), None)
+            if not agent:
+                await interaction.response.send_message(
+                    "No agent configured for this channel.", ephemeral=True
+                )
+                return
+
+            if not model:
+                current = self.daemon.model_overrides.get(channel_id, agent.model)
+                await interaction.response.send_message(
+                    f"Current model: `{current}`", ephemeral=True
+                )
+            elif model == "reset":
+                self.daemon.set_model_override(channel_id, None)
+                await interaction.response.send_message("Model reset to agent default.")
+            elif model in (agent.allowed_models or []):
+                self.daemon.set_model_override(channel_id, model)
+                await interaction.response.send_message(f"Model set to `{model}`.")
+            else:
+                allowed = ", ".join(agent.allowed_models or ["(any)"])
+                await interaction.response.send_message(
+                    f"Model `{model}` not allowed here. Options: {allowed}", ephemeral=True
+                )
+
+        @model_command.autocomplete("model")
+        async def model_autocomplete(
+            interaction: discord.Interaction, current: str
+        ) -> list[app_commands.Choice[str]]:
+            channel_id = str(interaction.channel_id)
+            agent = resolve_agent_for_channel(channel_id, None)
+            if not agent and isinstance(interaction.channel, discord.Thread):
+                agent = resolve_agent_for_channel(str(interaction.channel.parent_id), None)
+
+            options = ["reset"] + (agent.allowed_models if agent and agent.allowed_models else [])
+            return [
+                app_commands.Choice(name=m, value=m)
+                for m in options
+                if current.lower() in m.lower()
+            ][:25]
 
     async def on_ready(self) -> None:
         log.info(f"Discord bot ready: {self.user}")
+        if self.config.discord.guild_id:
+            guild = discord.Object(id=int(self.config.discord.guild_id))
+            self.tree.copy_global_to(guild=guild)
+            await self.tree.sync(guild=guild)
+            log.info("Slash commands synced to guild")
+        else:
+            await self.tree.sync()
+            log.info("Slash commands synced globally (may take up to 1 hour)")
 
     async def on_message(self, message: discord.Message) -> None:
         if message.author == self.user:
@@ -65,10 +123,6 @@ class ArcDiscordBot(discord.Client):
             return
 
         prompt = message.content.replace(f"<@{self.user.id}>", "").strip()
-
-        if prompt.startswith("/model"):
-            await self._handle_model_command(message, agent, prompt)
-            return
 
         if not self._rate_limiter.is_allowed(channel_id):
             log.warning(f"Rate limit hit for channel {channel_id}")
@@ -94,26 +148,6 @@ class ArcDiscordBot(discord.Client):
         output = result.get("result") or result.get("error") or "No response."
         for chunk in split_message(output, max_length=2000):
             await target.send(chunk)
-
-    async def _handle_model_command(
-        self, message: discord.Message, agent, prompt: str
-    ) -> None:
-        channel_id = str(message.channel.id)
-        parts = prompt.split(maxsplit=1)
-        if len(parts) == 2:
-            model = parts[1].strip()
-            if model == "reset":
-                self.daemon.set_model_override(channel_id, None)
-                await message.reply("Model reset to agent default.")
-            elif model in (agent.allowed_models or []):
-                self.daemon.set_model_override(channel_id, model)
-                await message.reply(f"Model set to {model}.")
-            else:
-                allowed = ", ".join(agent.allowed_models or ["(none)"])
-                await message.reply(f"Model '{model}' not allowed. Options: {allowed}")
-        else:
-            current = self.daemon.model_overrides.get(channel_id, agent.model)
-            await message.reply(f"Current model: {current}")
 
     async def send_to_default_channel(self, content: str, agent_name: str) -> None:
         """Send cron output to the agent's configured Discord channel."""
