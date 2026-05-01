@@ -71,12 +71,12 @@ class ArcTUI(App[None]):
     def action_next_tab(self) -> None:
         tc = self.query_one(TabbedContent)
         idx = self._TAB_ORDER.index(tc.active) if tc.active in self._TAB_ORDER else 0
-        tc.show_tab(self._TAB_ORDER[(idx + 1) % len(self._TAB_ORDER)])
+        tc.active = self._TAB_ORDER[(idx + 1) % len(self._TAB_ORDER)]
 
     def action_prev_tab(self) -> None:
         tc = self.query_one(TabbedContent)
         idx = self._TAB_ORDER.index(tc.active) if tc.active in self._TAB_ORDER else 0
-        tc.show_tab(self._TAB_ORDER[(idx - 1) % len(self._TAB_ORDER)])
+        tc.active = self._TAB_ORDER[(idx - 1) % len(self._TAB_ORDER)]
 
     def on_tabbed_content_tab_activated(
         self, event: TabbedContent.TabActivated
