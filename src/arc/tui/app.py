@@ -66,11 +66,17 @@ class ArcTUI(App[None]):
                 yield ConfigPane(id="config-pane")
         yield Footer()
 
+    _TAB_ORDER = ["status", "agents", "cron", "config"]
+
     def action_next_tab(self) -> None:
-        self.query_one(TabbedContent).action_next_tab()
+        tc = self.query_one(TabbedContent)
+        idx = self._TAB_ORDER.index(tc.active) if tc.active in self._TAB_ORDER else 0
+        tc.show_tab(self._TAB_ORDER[(idx + 1) % len(self._TAB_ORDER)])
 
     def action_prev_tab(self) -> None:
-        self.query_one(TabbedContent).action_previous_tab()
+        tc = self.query_one(TabbedContent)
+        idx = self._TAB_ORDER.index(tc.active) if tc.active in self._TAB_ORDER else 0
+        tc.show_tab(self._TAB_ORDER[(idx - 1) % len(self._TAB_ORDER)])
 
     def on_tabbed_content_tab_activated(
         self, event: TabbedContent.TabActivated
