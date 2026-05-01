@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
       'reference/cron-schema',
       'reference/troubleshooting',
     ]},
+    {type: 'doc', id: 'changelog', label: 'Changelog'},
   ],
 };
 export default sidebars;

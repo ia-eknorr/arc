@@ -52,6 +52,7 @@ const config: Config = {
           {label: 'Discord Integration', to: '/guides/discord'},
         ]},
         {title: 'More', items: [
+          {label: 'Changelog', to: '/changelog'},
           {label: 'GitHub', href: 'https://github.com/ia-eknorr/arc'},
         ]},
       ],
