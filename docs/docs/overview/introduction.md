@@ -48,7 +48,7 @@ arc setup
 # Create an agent
 arc agent create --name coach \
   --workspace /workspace/fitness-coach \
-  --model claude-sonnet-4-6
+  --model sonnet
 
 # Start the daemon
 arc daemon start

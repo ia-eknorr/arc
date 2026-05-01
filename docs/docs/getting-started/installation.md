@@ -139,7 +139,7 @@ source ~/.bashrc
 
 ```bash
 arc version
-# arc 0.1.0
+# arc 0.2.0
 
 arc setup
 # Checks for acpx and claude, creates ~/.arc/ if it doesn't exist

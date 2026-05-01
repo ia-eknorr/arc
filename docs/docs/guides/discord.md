@@ -40,7 +40,7 @@ discord:
   enabled: true
   token_env: DISCORD_BOT_TOKEN   # environment variable name (not the token itself)
   guild_id: "1234567890123456789"  # your server's ID
-  thread_mode: false
+  thread_mode: true
   rate_limit:
     messages_per_minute: 5
 ```
@@ -54,7 +54,7 @@ Add a `discord.channel_id` to the agent YAML:
 ```yaml
 name: coach
 workspace: /workspace/fitness-coach
-model: claude-sonnet-4-6
+model: sonnet
 discord:
   channel_id: "9876543210987654321"
   require_mention: false
@@ -124,10 +124,12 @@ The rate limit is per channel, not per user. The default is 5 messages per minut
 Discord users can switch the model for a channel using the `/model` command in the channel:
 
 ```
-/model claude-haiku-4-5
+/model haiku
 ```
 
-The bot responds: `Model set to claude-haiku-4-5.`
+The bot responds: `Model set to haiku.`
+
+Use acpx aliases (`sonnet`, `haiku`, `default`) not full Anthropic model IDs. The alias must also be in the agent's `allowed_models` list.
 
 The switch is sticky: subsequent messages in that channel use the new model until reset.
 

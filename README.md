@@ -50,7 +50,7 @@ This creates `~/.arc/` with default config, agent directories, and log directori
 arc ask --agent coach "What's my workout today?"
 
 # Override model
-arc ask --agent coach --model claude-haiku-4-5 "Quick question"
+arc ask --agent coach --model haiku "Quick question"
 
 # Use a local Ollama model
 arc ask --agent trainer --model ollama/qwen3:8b "Summarize my week"
@@ -67,7 +67,7 @@ arc ask --pretty --agent coach "Explain periodization"
 ```bash
 arc agent list
 arc agent show coach
-arc agent create --name coach --model claude-sonnet-4-6 --workspace /workspace/fitness-coach
+arc agent create --name coach --model sonnet --workspace /workspace/fitness-coach
 arc agent create --from ./coach.yaml   # from existing YAML file
 arc agent edit coach
 arc agent clone coach coach-dev        # clone (clears discord channel_id)
@@ -206,10 +206,10 @@ system_prompt_files:
   - USER.md
   - TOOLS.md
 
-model: claude-sonnet-4-6
+model: sonnet
 allowed_models:
-  - claude-sonnet-4-6
-  - claude-haiku-4-5
+  - sonnet
+  - haiku
 
 permission_mode: auto         # auto preferred; bypassPermissions if headless issues
 
@@ -247,7 +247,7 @@ jobs:
     description: "Background log scanner"
     schedule: "*/30 * * * *"
     agent: coach
-    model: claude-haiku-4-5   # cheaper model for frequent runs
+    model: haiku              # cheaper model for frequent runs
     prompt: >
       Read HEARTBEAT.md and follow it strictly.
     notify: discord_on_urgent
@@ -261,7 +261,7 @@ The bot responds to messages in channels bound to agents. By default (`require_m
 Responses are inline by default. Set `thread_mode: true` in config to have the bot create a thread for each new conversation. Discord threads use persistent named `acpx` sessions so context is preserved across messages.
 
 Commands in Discord:
-- `/model claude-haiku-4-5` - switch model for this channel
+- `/model haiku` - switch model for this channel (use acpx alias, not full model ID)
 - `/model reset` - revert to agent default
 
 Store the bot token in `~/.arc/.env` (not in config.yaml):
@@ -273,7 +273,7 @@ chmod 600 ~/.arc/.env
 
 ## Dispatch paths
 
-**Claude (via acpx):** For any model starting with `claude-`. Uses `acpx` to manage Claude Code sessions. Discord threads use persistent named sessions; CLI and cron use one-shot exec mode.
+**Claude (via acpx):** For any model that does not start with `ollama/`. Uses acpx aliases (`sonnet`, `haiku`, `default`). Discord threads use persistent named sessions; CLI and cron use one-shot exec mode.
 
 **Ollama (via httpx):** For any model starting with `ollama/`. Calls the Ollama-compatible REST API at the configured endpoint. The model name after `ollama/` is passed to the API. To use a named endpoint: `ollama/kyle/qwen3:8b`.
 

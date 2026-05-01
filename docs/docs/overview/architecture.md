@@ -37,7 +37,7 @@ The dispatcher is the routing layer. Given a prompt, an agent config, and an opt
 
 1. Resolves the effective model (override or agent default)
 2. Validates the model against `allowed_models` if the list is non-empty
-3. Routes to `dispatch_acpx` for `claude-*` models or `dispatch_ollama` for `ollama/*` models
+3. Routes to `dispatch_acpx` for any model not starting with `ollama/`, or `dispatch_ollama` for `ollama/*` models
 4. Returns a `DispatchResult` with the output text, the model that was used, and the dispatch type
 
 **acpx path:** Builds a system prompt by reading and concatenating `system_prompt_files` from the agent workspace. Writes the prompt to a temporary file (to avoid shell escaping issues with multi-line prompts). Calls `acpx --format quiet --cwd <workspace> --model <model> <perm_flag> claude exec --file <tmpfile>` for one-shot dispatch, or manages a named session for Discord threads.

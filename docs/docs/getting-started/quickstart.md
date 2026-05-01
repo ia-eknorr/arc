@@ -35,7 +35,7 @@ Verify the install:
 
 ```bash
 arc version
-# arc 0.1.0
+# arc 0.2.0
 ```
 
 ## 2. Run arc setup
@@ -72,7 +72,7 @@ Create an agent called `main` that uses your current directory as its workspace:
 arc agent create \
   --name main \
   --workspace "$PWD" \
-  --model claude-sonnet-4-6
+  --model sonnet
 ```
 
 Or interactively (without flags, arc prompts for each value):
@@ -81,14 +81,14 @@ Or interactively (without flags, arc prompts for each value):
 arc agent create
 # Agent name: main
 # Workspace path: /workspace/my-project
-# Model [claude-sonnet-4-6]:
+# Model [sonnet]:
 ```
 
 Verify it was created:
 
 ```bash
 arc agent list
-# main             claude-sonnet-4-6            /workspace/my-project
+# main             sonnet            /workspace/my-project
 ```
 
 ## 4. Start the daemon
@@ -124,7 +124,7 @@ cat README.md | arc ask --agent main "Summarize this in three sentences."
 Override the model for a single request:
 
 ```bash
-arc ask --agent main --model claude-haiku-4-5 "Quick question: what does this function do?"
+arc ask --agent main --model haiku "Quick question: what does this function do?"
 ```
 
 Show dispatch metadata with `--pretty`:
@@ -148,7 +148,7 @@ Example output:
 daemon    running (pid=12345, socket=/Users/you/.arc/arc.sock)
 
 agents
-  main             claude-sonnet-4-6            /workspace/my-project
+  main             sonnet            /workspace/my-project
 
 cron
   (no jobs configured)

@@ -61,7 +61,7 @@ name: coach
 | Required | no |
 | Default | `""` |
 
-A human-readable description of the agent. Shown in `arc agent list` (in future versions). Has no functional effect.
+A human-readable description of the agent. Not currently displayed by `arc agent list` but stored in the YAML for your own reference. Has no functional effect.
 
 ```yaml
 description: "Coach Kai - personal fitness coach with Strava integration"

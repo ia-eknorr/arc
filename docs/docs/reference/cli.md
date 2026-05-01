@@ -93,7 +93,7 @@ arc version
 
 ```bash
 arc version
-# arc 0.1.0
+# arc 0.2.0
 ```
 
 ---
@@ -445,7 +445,7 @@ arc cron remove old-job
 arc cron edit NAME
 ```
 
-Opens `~/.arc/cron/jobs.yaml` in `$EDITOR`.
+Opens `~/.arc/cron/jobs.yaml` in `$EDITOR`. The `NAME` argument is required but currently unused -- the command always opens the full jobs file regardless of which job name is given.
 
 ```bash
 arc cron edit heartbeat
@@ -629,11 +629,11 @@ arc config set timeouts.acpx_request 600
 
 ## Global options
 
-The `--config-dir` option is available on all commands (hidden from help by default). It overrides the `~/.arc` directory for testing or running multiple isolated arc instances:
+The `--config-dir` option is available on all commands (hidden from help by default). It overrides the `~/.arc` directory for testing or running multiple isolated arc instances. Pass it after the subcommand:
 
 ```bash
-arc --config-dir /tmp/arc-test ask --agent main "Hello"
-arc --config-dir /tmp/arc-test daemon start
+arc ask --config-dir /tmp/arc-test --agent main "Hello"
+arc daemon --config-dir /tmp/arc-test start
 ```
 
 Shell completions are installed with `arc --install-completion` and shown (without installing) with `arc --show-completion`.

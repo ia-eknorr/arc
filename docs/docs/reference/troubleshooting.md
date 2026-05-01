@@ -142,7 +142,7 @@ arc daemon restart
 5. Check that `acpx` works manually:
 
    ```bash
-   acpx --format quiet --cwd /tmp --model claude-haiku-4-5 --approve-all claude exec --file /dev/stdin <<< "Say hello"
+   acpx --format quiet --cwd /tmp --model haiku --approve-all claude exec --file /dev/stdin <<< "Say hello"
    ```
 
 ---
@@ -275,7 +275,7 @@ arc agent edit coach
 Option 2: Use a model that is already in the list:
 
 ```bash
-arc ask --agent coach --model claude-haiku-4-5 "Hello"
+arc ask --agent coach --model haiku "Hello"
 ```
 
 Option 3: Clear `allowed_models` to allow any model with the correct prefix:

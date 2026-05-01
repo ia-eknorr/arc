@@ -37,7 +37,7 @@ jobs:
     description: "Background log scanner every 30 minutes"
     schedule: "*/30 * * * *"
     agent: coach
-    model: claude-haiku-4-5
+    model: haiku
     prompt: >
       Read HEARTBEAT.md and follow it strictly.
     notify: discord_on_urgent

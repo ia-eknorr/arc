@@ -17,10 +17,10 @@ workspace: /workspace/fitness-coach
 system_prompt_files:
   - AGENTS.md
   - IDENTITY.md
-model: claude-sonnet-4-6
+model: sonnet
 allowed_models:
-  - claude-sonnet-4-6
-  - claude-haiku-4-5
+  - sonnet
+  - haiku
 discord:
   channel_id: "1234567890123456789"
 ```
@@ -89,11 +89,11 @@ The model for a request is resolved in priority order:
 
 Model strings follow one of two patterns:
 
-- `claude-<variant>`: routed to `acpx`. Examples: `claude-sonnet-4-6`, `claude-haiku-4-5`, `claude-opus-4-7`
-- `ollama/<model>`: routed to the `local` Ollama endpoint. Example: `ollama/qwen3:8b`
-- `ollama/<endpoint>/<model>`: routed to a named Ollama endpoint. Example: `ollama/remote/qwen3:32b`
+- **acpx alias** (any string not starting with `ollama/`): routed to Claude via `acpx`. Use the acpx alias, not the full Anthropic model ID. Examples: `sonnet`, `haiku`, `default`, `opus`
+- **`ollama/<model>`**: routed to the `local` Ollama endpoint. Example: `ollama/qwen3:8b`
+- **`ollama/<endpoint>/<model>`**: routed to a named Ollama endpoint. Example: `ollama/remote/qwen3:32b`
 
-Anything else raises a `DispatchError`.
+Using a full Anthropic model ID like `claude-sonnet-4-6` instead of the acpx alias `sonnet` will cause acpx to reject the request. See the [Model Routing guide](../guides/model-routing.md) for the full alias table.
 
 ## Cron jobs
 

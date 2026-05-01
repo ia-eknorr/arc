@@ -16,7 +16,7 @@ An agent is a YAML file in `~/.arc/agents/`. The filename (without `.yaml`) is t
 arc agent create
 # Agent name: coach
 # Workspace path: /workspace/fitness-coach
-# Model [claude-sonnet-4-6]: claude-sonnet-4-6
+# Model [sonnet]: sonnet
 # Created agent 'coach' at /Users/you/.arc/agents/coach.yaml
 ```
 
@@ -26,7 +26,7 @@ arc agent create
 arc agent create \
   --name coach \
   --workspace /workspace/fitness-coach \
-  --model claude-sonnet-4-6
+  --model sonnet
 ```
 
 ### From an existing YAML file
@@ -52,10 +52,10 @@ system_prompt_files:
   - USER.md
   - TOOLS.md
 
-model: claude-sonnet-4-6
+model: sonnet
 allowed_models:
-  - claude-sonnet-4-6
-  - claude-haiku-4-5
+  - sonnet
+  - haiku
 
 permission_mode: approve-all
 
@@ -113,13 +113,15 @@ This is Ollama-specific: for Claude agents, the agent can read the filesystem di
 
 ## Model configuration
 
-`model` is the default model for the agent. `allowed_models` is an optional list of models that callers are permitted to request. If `allowed_models` is empty, any model with the correct prefix (`claude-*` or `ollama/*`) is accepted.
+`model` is the default model for the agent. `allowed_models` is an optional list of models that callers are permitted to request. If `allowed_models` is empty, any valid model string is accepted.
+
+For Claude models, use the acpx alias (`sonnet`, `haiku`, `default`, `opus`), not the full Anthropic model ID. See the [Model Routing guide](./model-routing.md) for the full alias table.
 
 ```yaml
-model: claude-sonnet-4-6
+model: sonnet
 allowed_models:
-  - claude-sonnet-4-6
-  - claude-haiku-4-5
+  - sonnet
+  - haiku
   - ollama/qwen3:8b
 ```
 
@@ -162,8 +164,8 @@ To get a channel ID in Discord: enable Developer Mode in settings, then right-cl
 
 ```bash
 arc agent list
-# coach            claude-sonnet-4-6            /workspace/fitness-coach  channel=1234567890123456789
-# trainer          ollama/qwen3:8b              /workspace/fitness-coach
+# coach            sonnet            /workspace/fitness-coach  channel=1234567890123456789
+# trainer          ollama/qwen3:8b   /workspace/fitness-coach
 ```
 
 ### Show agent config
@@ -180,7 +182,7 @@ Prints the raw YAML for the agent.
 arc agent edit coach
 ```
 
-Opens the agent YAML in `$EDITOR`. Changes take effect on the next request (the daemon re-reads agent files on each dispatch).
+Opens the agent YAML in `$EDITOR`. Restart the daemon after editing for changes to take effect.
 
 ### Clone an agent
 
@@ -219,10 +221,10 @@ system_prompt_files:
   - USER.md
   - TOOLS.md
 
-model: claude-sonnet-4-6
+model: sonnet
 allowed_models:
-  - claude-sonnet-4-6
-  - claude-haiku-4-5
+  - sonnet
+  - haiku
 
 permission_mode: approve-all
 
@@ -241,9 +243,9 @@ system_prompt_files:
   - IDENTITY.md
   - SOUL.md
 
-model: claude-haiku-4-5
+model: haiku
 allowed_models:
-  - claude-haiku-4-5
+  - haiku
 
 permission_mode: approve-reads
 
