@@ -1,12 +1,11 @@
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import yaml
 
 from arc.config import ArcConfig, DaemonConfig, GitConfig, LoggingConfig
 from arc.cron import CronManager, load_jobs, set_job_enabled
-from arc.types import CronJob
 
 
 @pytest.fixture

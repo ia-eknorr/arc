@@ -1,7 +1,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from arc.cli import _codeburn_bin, app
@@ -15,7 +14,10 @@ runner = CliRunner()
 
 
 def test_codeburn_bin_prefers_global():
-    with patch("arc.cli.shutil.which", side_effect=lambda x: "/usr/bin/codeburn" if x == "codeburn" else None):
+    def _which(x: str) -> str | None:
+        return "/usr/bin/codeburn" if x == "codeburn" else None
+
+    with patch("arc.cli.shutil.which", side_effect=_which):
         assert _codeburn_bin() == ["/usr/bin/codeburn"]
 
 
@@ -47,7 +49,9 @@ def test_tokens_exits_when_codeburn_missing(config_dir: Path, coach_agent_yaml: 
 
 def test_tokens_unknown_agent_exits_nonzero(config_dir: Path) -> None:
     with patch("arc.cli.shutil.which", return_value="/usr/bin/codeburn"):
-        result = runner.invoke(app, ["tokens", "--agent", "nobody", "--config-dir", str(config_dir)])
+        result = runner.invoke(
+            app, ["tokens", "--agent", "nobody", "--config-dir", str(config_dir)]
+        )
     assert result.exit_code != 0
     assert "nobody" in result.output
 

@@ -1,13 +1,10 @@
-import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
-import pytest
 
 from arc.config import ArcConfig, DiscordConfig, DiscordRateLimit
 from arc.discord_bridge import ArcDiscordBot, _RateLimiter
-
 
 # --- helpers ---
 

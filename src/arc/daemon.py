@@ -3,6 +3,7 @@ import logging
 import os
 import signal
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from arc import ipc
 from arc.agents import load_agent
@@ -10,6 +11,9 @@ from arc.config import ArcConfig, load_config
 from arc.dispatcher import DispatchError, dispatch
 from arc.types import CronJob
 from arc.utils import append_jsonl, configure_logging, git_pull, load_dotenv, now_iso, write_pid
+
+if TYPE_CHECKING:
+    from arc.cron import CronManager
 
 log = logging.getLogger("arc.daemon")
 
@@ -261,7 +265,8 @@ class ArcDaemon:
         jobs = {j.name: j for j in self._cron.get_jobs()}
         if job_name not in jobs:
             available = ", ".join(jobs.keys()) or "(none)"
-            return {"status": "error", "error": f"Job '{job_name}' not found. Available: {available}"}
+            msg = f"Job '{job_name}' not found. Available: {available}"
+            return {"status": "error", "error": msg}
         await self.run_cron_job(jobs[job_name])
         return {"status": "ok", "result": f"Job '{job_name}' completed."}
 

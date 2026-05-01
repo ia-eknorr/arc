@@ -1,10 +1,8 @@
 """Tests for Phase 6 CLI commands: agent, log, config, cron add/remove/edit/history, version."""
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
 
 import yaml
-import pytest
 from typer.testing import CliRunner
 
 from arc.cli import app
@@ -77,7 +75,9 @@ def test_agent_create_writes_yaml(config_dir: Path, workspace: Path) -> None:
     assert data["model"] == "claude-haiku-4-5"
 
 
-def test_agent_create_already_exists(config_dir: Path, workspace: Path, coach_agent_yaml: dict) -> None:
+def test_agent_create_already_exists(
+    config_dir: Path, workspace: Path, coach_agent_yaml: dict
+) -> None:
     result = runner.invoke(app, [
         "agent", "create",
         "--name", "coach",
@@ -129,7 +129,9 @@ def test_agent_clone_creates_new(config_dir: Path, coach_agent_yaml: dict) -> No
     assert data.get("discord", {}).get("channel_id") is None
 
 
-def test_agent_clone_target_exists(config_dir: Path, coach_agent_yaml: dict, trainer_agent_yaml: dict) -> None:
+def test_agent_clone_target_exists(
+    config_dir: Path, coach_agent_yaml: dict, trainer_agent_yaml: dict
+) -> None:
     result = runner.invoke(app, [
         "agent", "clone", "coach", "trainer",
         "--config-dir", str(config_dir),
@@ -178,8 +180,10 @@ def test_log_cron_empty(config_dir: Path) -> None:
 def test_log_cron_filter_by_job(config_dir: Path) -> None:
     log_file = config_dir / "logs" / "cron.jsonl"
     entries = [
-        {"timestamp": "2026-04-30T10:00:00Z", "job": "weekly-plan", "status": "ok", "output_preview": "Done"},
-        {"timestamp": "2026-04-30T11:00:00Z", "job": "heartbeat", "status": "ok", "output_preview": "Alive"},
+        {"timestamp": "2026-04-30T10:00:00Z", "job": "weekly-plan", "status": "ok",
+         "output_preview": "Done"},
+        {"timestamp": "2026-04-30T11:00:00Z", "job": "heartbeat", "status": "ok",
+         "output_preview": "Alive"},
     ]
     log_file.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
 
@@ -243,12 +247,18 @@ def test_config_set_nested_creates_key(config_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _cron_entries() -> list[dict]:
+    return [
+        {"timestamp": "2026-04-30T10:00:00Z", "job": "weekly-plan",
+         "status": "ok", "output_preview": "Done"},
+        {"timestamp": "2026-04-30T11:00:00Z", "job": "heartbeat",
+         "status": "ok", "output_preview": "Alive"},
+    ]
+
+
 def test_cron_history_shows_all(config_dir: Path) -> None:
     log_file = config_dir / "logs" / "cron.jsonl"
-    entries = [
-        {"timestamp": "2026-04-30T10:00:00Z", "job": "weekly-plan", "status": "ok", "output_preview": "Done"},
-        {"timestamp": "2026-04-30T11:00:00Z", "job": "heartbeat", "status": "ok", "output_preview": "Alive"},
-    ]
+    entries = _cron_entries()
     log_file.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
 
     result = runner.invoke(app, ["cron", "history", "--config-dir", str(config_dir)])
@@ -259,10 +269,7 @@ def test_cron_history_shows_all(config_dir: Path) -> None:
 
 def test_cron_history_filter_by_name(config_dir: Path) -> None:
     log_file = config_dir / "logs" / "cron.jsonl"
-    entries = [
-        {"timestamp": "2026-04-30T10:00:00Z", "job": "weekly-plan", "status": "ok", "output_preview": "Done"},
-        {"timestamp": "2026-04-30T11:00:00Z", "job": "heartbeat", "status": "ok", "output_preview": "Alive"},
-    ]
+    entries = _cron_entries()
     log_file.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
 
     result = runner.invoke(app, [
@@ -276,7 +283,8 @@ def test_cron_history_filter_by_name(config_dir: Path) -> None:
 def test_cron_history_last_n(config_dir: Path) -> None:
     log_file = config_dir / "logs" / "cron.jsonl"
     entries = [
-        {"timestamp": f"2026-04-30T{h:02d}:00:00Z", "job": "job", "status": "ok", "output_preview": "x"}
+        {"timestamp": f"2026-04-30T{h:02d}:00:00Z", "job": "job", "status": "ok",
+         "output_preview": "x"}
         for h in range(10)
     ]
     log_file.write_text("\n".join(json.dumps(e) for e in entries) + "\n")

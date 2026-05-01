@@ -1,5 +1,11 @@
 # arc
 
+[![Lint](https://github.com/ia-eknorr/arc/actions/workflows/lint.yml/badge.svg)](https://github.com/ia-eknorr/arc/actions/workflows/lint.yml)
+[![Unit Tests](https://github.com/ia-eknorr/arc/actions/workflows/test.yml/badge.svg)](https://github.com/ia-eknorr/arc/actions/workflows/test.yml)
+![release](https://img.shields.io/badge/release-v0.1.0-orange)
+[![license](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
+[![docs](https://img.shields.io/badge/docs-ia--eknorr.github.io-blue)](https://ia-eknorr.github.io/arc/)
+
 A lightweight Python CLI and daemon for agent dispatch, scheduled tasks, and Discord integration. Replaces OpenClaw with minimal code, using `acpx` for Claude Code session management and `httpx` for Ollama.
 
 ## What it does

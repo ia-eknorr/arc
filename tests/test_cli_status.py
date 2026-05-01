@@ -1,7 +1,6 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from arc.cli import _next_fire_offline, _relative_time, app
