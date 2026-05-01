@@ -20,7 +20,7 @@ A lightweight Python CLI and daemon for agent dispatch, scheduled tasks, and Dis
 ## Install
 
 ```bash
-git clone git@github.com:eknorr/arc.git
+git clone git@github.com:ia-eknorr/arc.git
 cd arc
 python3 -m venv venv
 source venv/bin/activate
