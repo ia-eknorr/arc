@@ -1,4 +1,5 @@
 import asyncio
+import re
 import tempfile
 from pathlib import Path
 
@@ -64,6 +65,16 @@ def _acpx_permission_flag(permission_mode: str) -> str:
     return flag
 
 
+def _acpx_model_alias(model: str) -> str:
+    """Convert a full Claude model ID to the acpx model alias.
+
+    acpx advertises short aliases (sonnet, haiku) not full IDs like claude-sonnet-4-6.
+    Strip the 'claude-' prefix and version suffix to get the family name.
+    """
+    name = model.removeprefix("claude-")
+    return re.sub(r"-\d.*$", "", name)
+
+
 def _build_acpx_base(
     config: ArcConfig,
     agent: AgentConfig,
@@ -76,7 +87,7 @@ def _build_acpx_base(
         config.acpx.command,
         "--format", "quiet",
         "--cwd", agent.workspace,
-        "--model", model,
+        "--model", _acpx_model_alias(model),
         perm_flag,
     ]
     if system_prompt:

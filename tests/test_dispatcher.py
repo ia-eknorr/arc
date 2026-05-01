@@ -198,7 +198,7 @@ async def test_dispatch_acpx_uses_model_flag(
 
     cmd = mock_exec.call_args[0]
     assert "--model" in cmd
-    assert cmd[list(cmd).index("--model") + 1] == "claude-haiku-4-5"
+    assert cmd[list(cmd).index("--model") + 1] == "haiku"
     # No env override needed -- --model flag is used instead
     assert "env" not in mock_exec.call_args[1]
 
