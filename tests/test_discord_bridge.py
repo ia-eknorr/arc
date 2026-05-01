@@ -48,6 +48,7 @@ def _make_interaction(channel_id: str = "9999") -> MagicMock:
     interaction.channel = MagicMock(spec=discord.TextChannel)
     interaction.response = MagicMock()
     interaction.response.send_message = AsyncMock()
+    interaction.response.defer = AsyncMock()
     return interaction
 
 
@@ -381,3 +382,137 @@ async def test_send_to_default_channel_no_channel(config_dir: Path, coach_agent_
         from arc.agents import load_agent as real_load
         mock_load.side_effect = lambda n, _: real_load(n, config_dir)
         await bot.send_to_default_channel("hello", "coach")
+
+
+# --- /status ---
+
+
+async def test_status_command(config_dir: Path, coach_agent_yaml: dict) -> None:
+    bot, daemon = _make_bot()
+    daemon._handle_status = AsyncMock(return_value={
+        "daemon": {"pid": 42, "socket": "/tmp/arc.sock"},
+        "agents": [{"name": "coach", "model": "sonnet", "discord_channel": "9999"}],
+        "cron": [{"name": "heartbeat", "enabled": True, "next_run": None}],
+    })
+    interaction = _make_interaction()
+    cmd = bot.tree.get_command("status")
+
+    await cmd.callback(interaction)
+
+    interaction.response.send_message.assert_awaited_once()
+    text = interaction.response.send_message.call_args[0][0]
+    assert "coach" in text
+    assert "heartbeat" in text
+    assert interaction.response.send_message.call_args[1]["ephemeral"] is True
+
+
+# --- /agents ---
+
+
+async def test_agents_command(config_dir: Path, coach_agent_yaml: dict) -> None:
+    bot, _ = _make_bot()
+    interaction = _make_interaction()
+    cmd = bot.tree.get_command("agents")
+
+    with patch("arc.discord_bridge.list_agents") as mock_list:
+        from arc.agents import load_agent
+        mock_list.return_value = [load_agent("coach", config_dir)]
+        await cmd.callback(interaction)
+
+    text = interaction.response.send_message.call_args[0][0]
+    assert "coach" in text
+    assert "sonnet" in text
+
+
+# --- /history ---
+
+
+async def test_history_command(config_dir: Path, tmp_path: Path) -> None:
+    bot, _ = _make_bot()
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    routing = log_dir / "routing.jsonl"
+    routing.write_text(
+        '{"timestamp":"2026-05-01T10:00:00+00:00","agent":"coach","model":"sonnet","prompt_preview":"Hello"}\n'
+    )
+    interaction = _make_interaction()
+    cmd = bot.tree.get_command("history")
+
+    with patch.object(bot, "_log_path", return_value=routing):
+        await cmd.callback(interaction, last=5)
+
+    text = interaction.response.send_message.call_args[0][0]
+    assert "coach" in text
+    assert "Hello" in text
+
+
+# --- /ask ---
+
+
+async def test_ask_command(config_dir: Path, coach_agent_yaml: dict) -> None:
+    bot, daemon = _make_bot()
+    interaction = _make_interaction()
+    interaction.followup = MagicMock()
+    interaction.followup.send = AsyncMock()
+    cmd = bot.tree.get_command("ask")
+
+    await cmd.callback(interaction, agent="coach", prompt="test prompt")
+
+    daemon.handle_request.assert_awaited_once()
+    req = daemon.handle_request.call_args[0][0]
+    assert req["agent"] == "coach"
+    assert req["prompt"] == "test prompt"
+    interaction.followup.send.assert_awaited()
+
+
+async def test_ask_autocomplete(config_dir: Path, coach_agent_yaml: dict) -> None:
+    bot, _ = _make_bot()
+    interaction = _make_interaction()
+    cmd = bot.tree.get_command("ask")
+
+    with patch("arc.discord_bridge.list_agents") as mock_list:
+        from arc.agents import load_agent
+        mock_list.return_value = [load_agent("coach", config_dir)]
+        choices = await cmd._params["agent"].autocomplete(interaction, "")
+
+    assert any(c.name == "coach" for c in choices)
+
+
+# --- /cron ---
+
+
+async def test_cron_run(config_dir: Path) -> None:
+    bot, daemon = _make_bot()
+    daemon.handle_request = AsyncMock(return_value={"result": "job output"})
+    interaction = _make_interaction()
+    interaction.followup = MagicMock()
+    interaction.followup.send = AsyncMock()
+    cron_group = bot.tree.get_command("cron")
+    cmd = cron_group.get_command("run")
+
+    await cmd.callback(interaction, job="heartbeat")
+
+    req = daemon.handle_request.call_args[0][0]
+    assert req["op"] == "cron_run"
+    assert req["job"] == "heartbeat"
+    interaction.followup.send.assert_awaited()
+
+
+async def test_cron_next(config_dir: Path) -> None:
+    from datetime import datetime, timezone, timedelta
+    from types import SimpleNamespace
+    bot, daemon = _make_bot()
+    future = datetime.now(timezone.utc) + timedelta(hours=2)
+    mock_cron = MagicMock()
+    mock_cron.get_jobs.return_value = [SimpleNamespace(name="heartbeat", enabled=True)]
+    mock_cron.next_run_times.return_value = {"heartbeat": future.isoformat()}
+    daemon._cron = mock_cron
+    interaction = _make_interaction()
+    cron_group = bot.tree.get_command("cron")
+    cmd = cron_group.get_command("next")
+
+    await cmd.callback(interaction)
+
+    text = interaction.response.send_message.call_args[0][0]
+    assert "heartbeat" in text
+    assert "in " in text
