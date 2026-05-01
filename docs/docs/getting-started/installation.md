@@ -83,6 +83,35 @@ Then enable it:
 systemctl --user enable --now arc-daemon
 ```
 
+### LXC containers and rootless environments
+
+User systemd (`systemctl --user`) requires a D-Bus session and won't work when accessed via `pct exec` or similar non-login shells. Install as a system service instead:
+
+```bash
+arc daemon install
+# Copy the generated unit to the system directory
+cp ~/.config/systemd/user/arc-daemon.service /etc/systemd/system/arc-daemon.service
+```
+
+Edit the unit to add `User=` and a full `PATH`:
+
+```ini
+[Service]
+Type=simple
+User=root
+Environment=PATH=/usr/local/bin:/root/.local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/arc daemon start --foreground
+Restart=on-failure
+RestartSec=5
+```
+
+Then enable it:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now arc-daemon
+```
+
 ## Shell completion
 
 Typer generates completion scripts for bash, zsh, fish, and PowerShell.
