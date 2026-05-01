@@ -1645,21 +1645,24 @@ Do not test visual layout or colors. Test state changes and file writes.
 
 #### Definition of done
 
-- [ ] `arc tui` launches and shows Status screen
-- [ ] All four screens reachable via tab/click
-- [ ] Status screen auto-refreshes every 5 seconds
-- [ ] Agent model can be changed inline and persists to YAML
-- [ ] Agent can be created with required fields via `n` shortcut
-- [ ] Agent can be deleted with confirmation
-- [ ] Cron job can be enabled/disabled via `space`
-- [ ] Cron job can be triggered immediately via `r` (daemon must be running)
-- [ ] Config boolean fields toggle correctly and persist
-- [ ] Config numeric fields (timeouts) edit inline and persist
-- [ ] All screens degrade gracefully when daemon is not running
-- [ ] `$EDITOR` escape hatch works on Agents, Cron, and Config screens
-- [ ] `arc tui` prints install hint if Textual not installed
-- [ ] All tests pass (`pytest tests/test_tui/`)
-- [ ] No regressions in existing CLI tests
+- [x] `arc tui` launches and shows Status screen
+- [x] All four screens reachable via tab/click
+- [x] Status screen auto-refreshes every 5 seconds
+- [x] Agent model can be changed inline and persists to YAML
+- [x] Agent can be created with required fields via `n` shortcut
+- [x] Agent can be deleted with confirmation
+- [x] Cron job can be enabled/disabled via `space`
+- [x] Cron job can be triggered immediately via `r` (daemon must be running)
+- [x] Config boolean fields toggle correctly and persist
+- [x] Config numeric fields (timeouts) edit inline and persist
+- [x] All screens degrade gracefully when daemon is not running
+- [x] `$EDITOR` escape hatch works on Agents, Cron, and Config screens
+- [x] `arc tui` prints install hint if Textual not installed
+- [x] All tests pass (`pytest tests/test_tui/`)
+- [x] No regressions in existing CLI tests
+- [x] h/j/k/l navigation: j/k move list cursor, h/l switch tabs from anywhere
+
+- **Milestone:** TUI shipped, all 203 tests pass, h/j/k/l navigation fully functional ✓
 
 ---
 

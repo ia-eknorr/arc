@@ -323,6 +323,40 @@ pytest --cov=arc --cov-report=term-missing
 ruff check src/ tests/
 ```
 
+## TUI
+
+`arc tui` opens a k9s-style terminal management interface for common operational tasks.
+
+```bash
+arc tui
+```
+
+Four panes, navigated with `h`/`l` (or click the tab headers):
+
+| Pane | What you can do |
+|------|-----------------|
+| **Status** | See daemon state, agents, and upcoming cron jobs |
+| **Agents** | Browse agents, change model, create/delete, open in `$EDITOR` |
+| **Cron** | Toggle jobs on/off, run now, create/delete |
+| **Config** | Edit common config fields inline, open full file in `$EDITOR` |
+
+Keybindings:
+
+| Key | Action |
+|-----|--------|
+| `h` / `l` | Previous / next tab |
+| `j` / `k` | Move cursor up/down in list |
+| `g` / `G` | Jump to top / bottom of list |
+| `q` | Quit |
+| `r` | Run selected cron job now |
+| `s` | Start / stop daemon (Status pane) |
+| `space` | Toggle cron job enabled/disabled, or toggle boolean config |
+| `n` | New agent or cron job |
+| `d` | Delete selected item (with confirmation) |
+| `e` | Open selected file in `$EDITOR` |
+| `c` | Change model for selected agent |
+| `enter` | Edit selected config field |
+
 ## Implementation status
 
 - [x] Phase 1: Foundation (types, config, agents, dispatcher, `arc ask`, `arc status`, `arc tokens`)
@@ -331,3 +365,4 @@ ruff check src/ tests/
 - [x] Phase 4: Cron (APScheduler, `arc cron` commands, Discord notifications)
 - [x] Phase 5: Setup wizard, OpenClaw migration (`arc setup`, `arc import-openclaw`)
 - [x] Phase 6: Polish (`arc agent`, `arc log`, `arc config`, `arc cron` add/remove/edit/history, shell completions)
+- [x] Phase 7: TUI (`arc tui` -- k9s-style interface, all four panes, h/j/k/l navigation)
