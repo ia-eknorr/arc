@@ -1,0 +1,14 @@
+[Unit]
+Description=arc agent router daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/arc daemon start --foreground
+Restart=on-failure
+RestartSec=5
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=%h
+
+[Install]
+WantedBy=default.target

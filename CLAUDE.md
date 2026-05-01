@@ -1,6 +1,6 @@
 # CLAUDE.md -- arc project
 
-Read `arc-design-v4-final.md` for the full design document before starting any work.
+Read `.design/design.md` for the full design document before starting any work.
 
 ## What this is
 

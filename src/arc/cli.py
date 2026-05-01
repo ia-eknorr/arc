@@ -600,6 +600,115 @@ def tokens_cmd(
 
 
 # ---------------------------------------------------------------------------
+# arc setup
+# ---------------------------------------------------------------------------
+
+
+@app.command("setup")
+def setup_cmd(
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Interactive first-run setup wizard."""
+    from arc.setup_wizard import (
+        check_all_deps,
+        create_arc_dirs,
+        create_default_config,
+        create_default_env,
+        write_discord_config,
+    )
+
+    arc_dir = (config_dir or Path("~/.arc")).expanduser()
+    typer.echo(f"arc setup -- configuring {arc_dir}\n")
+
+    # Check deps
+    deps = check_all_deps()
+    for name, path in deps.items():
+        status = path or "NOT FOUND"
+        marker = "ok" if path else "MISSING"
+        typer.echo(f"  [{marker}] {name}: {status}")
+
+    if not deps["acpx"]:
+        typer.echo("\nInstall acpx: npm install -g acpx@latest", err=True)
+    if not deps["claude"]:
+        typer.echo("Install Claude Code: curl -fsSL https://claude.ai/install.sh | bash", err=True)
+
+    typer.echo()
+
+    # Create dirs and default config
+    create_arc_dirs(arc_dir)
+    if create_default_config(arc_dir):
+        typer.echo(f"Created {arc_dir}/config.yaml")
+    else:
+        typer.echo(f"Config already exists: {arc_dir}/config.yaml")
+
+    if create_default_env(arc_dir):
+        typer.echo(f"Created {arc_dir}/.env (chmod 600)")
+
+    # Discord setup
+    typer.echo()
+    setup_discord = typer.confirm("Set up Discord bot?", default=False)
+    if setup_discord:
+        token = typer.prompt("Discord bot token")
+        guild_id = typer.prompt("Discord guild ID")
+        write_discord_config(arc_dir, token, guild_id)
+        typer.echo("Discord configured. Restart daemon to apply.")
+
+    typer.echo("\nSetup complete. Run: arc daemon start")
+
+
+# ---------------------------------------------------------------------------
+# arc import-openclaw
+# ---------------------------------------------------------------------------
+
+
+@app.command("import-openclaw")
+def import_openclaw_cmd(
+    from_dir: Annotated[
+        Path, typer.Option("--from", help="OpenClaw config directory.")
+    ] = Path("~/.openclaw"),
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without writing.")] = False,
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Import agents and cron jobs from an OpenClaw installation."""
+    from arc.import_openclaw import import_from_path
+
+    openclaw_dir = from_dir.expanduser()
+    arc_dir = (config_dir or Path("~/.arc")).expanduser()
+
+    if not openclaw_dir.exists():
+        typer.echo(f"Error: OpenClaw directory not found: {openclaw_dir}", err=True)
+        raise typer.Exit(1)
+
+    if dry_run:
+        typer.echo(f"Dry run -- reading from {openclaw_dir}, would write to {arc_dir}\n")
+    else:
+        typer.echo(f"Importing from {openclaw_dir} into {arc_dir}\n")
+
+    summary = import_from_path(openclaw_dir, arc_dir, dry_run=dry_run)
+
+    if summary["errors"]:
+        for e in summary["errors"]:
+            typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
+
+    for name in summary["agents_imported"]:
+        prefix = "[dry-run] would import" if dry_run else "Imported"
+        typer.echo(f"  {prefix} agent: {name}")
+
+    for name in summary["jobs_imported"]:
+        prefix = "[dry-run] would import" if dry_run else "Imported"
+        typer.echo(f"  {prefix} cron job: {name}")
+
+    for msg in summary["skipped"]:
+        typer.echo(f"  Skipped: {msg}")
+
+    if not summary["agents_imported"] and not summary["jobs_imported"] and not summary["skipped"]:
+        typer.echo("Nothing to import.")
+    elif not dry_run:
+        typer.echo("\nDone. Review ~/.arc/agents/ and restart the daemon.")
+
+
+# ---------------------------------------------------------------------------
 # arc version
 # ---------------------------------------------------------------------------
 
