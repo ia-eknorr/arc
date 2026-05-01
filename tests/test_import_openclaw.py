@@ -168,7 +168,8 @@ def test_convert_agents_no_channel(tmp_path: Path) -> None:
 def test_convert_cron_jobs_cron_schedule() -> None:
     data = {"jobs": [
         {"id": "x", "agentId": "coach", "name": "weekly", "enabled": True,
-         "schedule": {"kind": "cron", "expr": "0 20 * * 0"}, "payload": {"message": "Write plan."}},
+         "schedule": {"kind": "cron", "expr": "0 20 * * 0"},
+         "payload": {"message": "Write plan."}},
     ]}
     result = convert_cron_jobs(data)
     assert result["jobs"]["weekly"]["schedule"] == "0 20 * * 0"
@@ -178,7 +179,8 @@ def test_convert_cron_jobs_cron_schedule() -> None:
 def test_convert_cron_jobs_every_schedule() -> None:
     data = {"jobs": [
         {"id": "x", "agentId": "trainer", "name": "heartbeat", "enabled": True,
-         "schedule": {"kind": "every", "everyMs": 7200000}, "payload": {"message": "Scan."}},
+         "schedule": {"kind": "every", "everyMs": 7200000},
+         "payload": {"message": "Scan."}},
     ]}
     result = convert_cron_jobs(data)
     assert result["jobs"]["heartbeat"]["schedule"] == "*/120 * * * *"
@@ -187,7 +189,8 @@ def test_convert_cron_jobs_every_schedule() -> None:
 def test_convert_cron_jobs_disabled() -> None:
     data = {"jobs": [
         {"id": "x", "agentId": "coach", "name": "paused", "enabled": False,
-         "schedule": {"kind": "cron", "expr": "0 7 * * *"}, "payload": {"message": "hi"}},
+         "schedule": {"kind": "cron", "expr": "0 7 * * *"},
+         "payload": {"message": "hi"}},
     ]}
     result = convert_cron_jobs(data)
     assert result["jobs"]["paused"]["enabled"] is False

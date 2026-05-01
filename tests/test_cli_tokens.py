@@ -14,8 +14,8 @@ runner = CliRunner()
 
 
 def test_codeburn_bin_prefers_global():
-    def _which(name: str) -> str | None:
-        return "/usr/bin/codeburn" if name == "codeburn" else None
+    def _which(x: str) -> str | None:
+        return "/usr/bin/codeburn" if x == "codeburn" else None
 
     with patch("arc.cli.shutil.which", side_effect=_which):
         assert _codeburn_bin() == ["/usr/bin/codeburn"]

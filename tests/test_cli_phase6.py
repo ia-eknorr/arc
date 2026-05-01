@@ -247,14 +247,18 @@ def test_config_set_nested_creates_key(config_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _cron_entries() -> list[dict]:
+    return [
+        {"timestamp": "2026-04-30T10:00:00Z", "job": "weekly-plan",
+         "status": "ok", "output_preview": "Done"},
+        {"timestamp": "2026-04-30T11:00:00Z", "job": "heartbeat",
+         "status": "ok", "output_preview": "Alive"},
+    ]
+
+
 def test_cron_history_shows_all(config_dir: Path) -> None:
     log_file = config_dir / "logs" / "cron.jsonl"
-    entries = [
-        {"timestamp": "2026-04-30T10:00:00Z", "job": "weekly-plan", "status": "ok",
-         "output_preview": "Done"},
-        {"timestamp": "2026-04-30T11:00:00Z", "job": "heartbeat", "status": "ok",
-         "output_preview": "Alive"},
-    ]
+    entries = _cron_entries()
     log_file.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
 
     result = runner.invoke(app, ["cron", "history", "--config-dir", str(config_dir)])
@@ -265,12 +269,7 @@ def test_cron_history_shows_all(config_dir: Path) -> None:
 
 def test_cron_history_filter_by_name(config_dir: Path) -> None:
     log_file = config_dir / "logs" / "cron.jsonl"
-    entries = [
-        {"timestamp": "2026-04-30T10:00:00Z", "job": "weekly-plan", "status": "ok",
-         "output_preview": "Done"},
-        {"timestamp": "2026-04-30T11:00:00Z", "job": "heartbeat", "status": "ok",
-         "output_preview": "Alive"},
-    ]
+    entries = _cron_entries()
     log_file.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
 
     result = runner.invoke(app, [

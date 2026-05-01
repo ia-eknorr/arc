@@ -286,10 +286,10 @@ class AgentsPane(Widget):
         self._refresh_list()
 
     def _refresh_list(self) -> None:
-        cfg = load_config()
-        config_dir = Path(cfg.daemon.pid_file).expanduser().parent
         lv = self.query_one("#agents-list", VimListView)
         lv.clear()
+        cfg = load_config()
+        config_dir = Path(cfg.daemon.pid_file).expanduser().parent
         self._agents = list_agents(config_dir)
         for a in self._agents:
             lv.append(ListItem(Label(a.name)))

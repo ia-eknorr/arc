@@ -84,31 +84,28 @@ def with_agents(arc_dir: Path, tmp_path: Path) -> Path:
 @pytest.fixture
 def with_cron(arc_dir: Path) -> Path:
     (arc_dir / "cron" / "jobs.yaml").write_text(
-        yaml.dump(
-            {
-                "jobs": {
-                    "heartbeat": {
-                        "schedule": "*/30 * * * *",
-                        "agent": "coach",
-                        "prompt": "Check status.",
-                        "enabled": True,
-                    },
-                    "weekly-plan": {
-                        "schedule": "0 19 * * 0",
-                        "agent": "coach",
-                        "prompt": "Write the weekly plan.",
-                        "enabled": False,
-                    },
-                    "daily-brief": {
-                        "schedule": "0 7 * * *",
-                        "agent": "coach",
-                        "prompt": "Morning brief.",
-                        "enabled": True,
-                    },
-                }
-            },
-            sort_keys=False,
-        )
+        yaml.dump({
+            "jobs": {
+                "heartbeat": {
+                    "schedule": "*/30 * * * *",
+                    "agent": "coach",
+                    "prompt": "Check status.",
+                    "enabled": True,
+                },
+                "weekly-plan": {
+                    "schedule": "0 19 * * 0",
+                    "agent": "coach",
+                    "prompt": "Write the weekly plan.",
+                    "enabled": False,
+                },
+                "daily-brief": {
+                    "schedule": "0 7 * * *",
+                    "agent": "coach",
+                    "prompt": "Morning brief.",
+                    "enabled": True,
+                },
+            }
+        })
     )
     return arc_dir
 
@@ -288,12 +285,11 @@ async def test_agent_detail_updates_on_keyboard_nav(
                 from arc.tui.screens.agents import AgentDetail
 
                 detail = pilot.app.query_one("#agents-detail", AgentDetail)
-                # Detail shows coach initially (first agent)
+                # Detail shows coach initially (first agent alphabetically)
                 text_coach = str(detail.content)
 
-                # First j: None -> 0 (coach, same as initial)
+                # First j: None -> 0 (coach again, no visible change)
                 await pilot.press("j")
-                await pilot.pause(0.05)
                 # Second j: 0 -> 1 (trainer)
                 await pilot.press("j")
                 await pilot.pause(0.1)
@@ -333,10 +329,9 @@ async def test_cron_detail_updates_on_nav(arc_dir: Path, with_cron: Path) -> Non
                 text_first = str(detail.content)
                 assert len(text_first) > 10, "Detail should not be empty after mount"
 
-                # First j: None -> 0 (same job, detail unchanged)
+                # First j: None -> 0 (same job as auto-shown, no visible change)
                 await pilot.press("j")
-                await pilot.pause(0.05)
-                # Second j: 0 -> 1 (next job)
+                # Second j: 0 -> 1 (different job)
                 await pilot.press("j")
                 await pilot.pause(0.1)
                 text_second = str(detail.content)
@@ -365,11 +360,12 @@ async def test_cron_toggle_action_writes_yaml(arc_dir: Path, with_cron: Path) ->
                 from arc.tui.screens.cron import CronPane
 
                 pane = pilot.app.query_one("#cron-pane", CronPane)
-                # heartbeat is first (index 0), enabled=True
+                # yaml.dump sorts keys alphabetically: daily-brief(0), heartbeat(1), weekly-plan(2)
                 lv = pilot.app.query_one("#cron-list", VimListView)
                 lv.focus()
                 await pilot.pause(0.05)
-                # Ensure first item is selected
+                # j twice: None->0 (daily-brief), 0->1 (heartbeat)
+                await pilot.press("j")
                 await pilot.press("j")
                 await pilot.pause(0.05)
 
@@ -398,7 +394,9 @@ async def test_cron_toggle_via_space_key(arc_dir: Path, with_cron: Path) -> None
                 lv = pilot.app.query_one("#cron-list", VimListView)
                 lv.focus()
                 await pilot.pause(0.05)
-                await pilot.press("j")  # select heartbeat (index 0)
+                # j twice: None->0 (daily-brief), 0->1 (heartbeat, alphabetically second)
+                await pilot.press("j")
+                await pilot.press("j")
                 await pilot.pause(0.05)
 
                 # Press space; binding defined on CronPane, bubbles from VimListView
