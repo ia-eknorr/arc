@@ -8,23 +8,6 @@ sidebar_position: 2
 
 arc has six major components that work together to accept prompts from multiple sources and route them to the correct backend.
 
-## Component diagram
-
-```mermaid
-graph TD
-    A[arc CLI] -->|Unix socket IPC| D[ArcDaemon]
-    B[Discord Bot] -->|handle_request| D
-    C[CronManager] -->|run_cron_job| D
-    D -->|acpx dispatch| E[Claude Code]
-    D -->|httpx| F[Ollama API]
-    D -->|notify| B
-    G[~/.arc/agents/*.yaml] -->|load_agent| D
-    H[~/.arc/cron/jobs.yaml] -->|load_jobs| C
-    D -->|append_jsonl| I[~/.arc/logs/]
-    J[~/.arc/config.yaml] -->|load_config| D
-    J -->|load_config| A
-```
-
 ## Components
 
 ### arc CLI (`arc.cli`)
