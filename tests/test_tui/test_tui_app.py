@@ -21,12 +21,12 @@ def arc_dir(tmp_path: Path) -> Path:
     (d / "logs").mkdir()
     (d / "cron").mkdir()
     (d / "config.yaml").write_text(
-        """\
+        f"""\
 daemon:
   auto_start: false
   log_level: info
-  socket_path: /tmp/arc-test.sock
-  pid_file: /tmp/arc-test.pid
+  socket_path: {d}/arc.sock
+  pid_file: {d}/daemon.pid
 acpx:
   command: acpx
   default_agent: claude
