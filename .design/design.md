@@ -1413,9 +1413,9 @@ arc daemon start   # then @mention in Discord
 - [x] Notification dispatch (discord, discord_on_urgent)
 - [x] Tests: test_cron
 - **Milestone:** cron job runs on schedule, output posts to Discord ✓ (verified live)
-- **Known gap:** `arc cron run` (manual) dispatches but skips Discord notify and
-  cron.jsonl logging. Scheduled runs go through `run_cron_job` and behave correctly.
-  Fix: route `arc cron run` through `run_cron_job` via a dedicated IPC op.
+- **Known gap (resolved in Phase 6):** `arc cron run` (manual) now routes through
+  `run_cron_job` via `{"op": "cron_run"}` IPC op, producing Discord notify and
+  cron.jsonl logging identical to a scheduled run.
 - **Missing:** `arc cron add/remove/edit/history` -- deferred to Phase 6.
 
 ### Phase 5: Setup + Migration -- COMPLETE
@@ -1428,20 +1428,20 @@ arc daemon start   # then @mention in Discord
 - [x] Tests: test_setup, test_import_openclaw
 - **Milestone:** fresh install to working system in one session ✓
 
-### Phase 6: Polish
+### Phase 6: Polish -- COMPLETE
 - [x] `arc tokens` - codeburn integration for per-agent token observability (gh #1 for --all flag)
 - [x] `arc status` - daemon state, agents, cron next-run in one command
 - [x] Shell completions (zsh, hand-written at ~/.zfunc/_arc)
-- [ ] `arc log` commands
-- [ ] `arc config show/edit/set`
-- [ ] `arc agent list/show/create/edit/delete/clone`
-- [ ] `arc cron add/remove/edit/history`
-- [ ] Fix `arc cron run` to trigger Discord notify and cron logging
-- [ ] README.md with full usage docs
-- [ ] Error messages review
-- [ ] Final test pass
-- [ ] `arc --version`
-- **Milestone:** all tests pass, README complete
+- [x] `arc log` commands
+- [x] `arc config show/edit/set`
+- [x] `arc agent list/show/create/edit/delete/clone`
+- [x] `arc cron add/remove/edit/history`
+- [x] Fix `arc cron run` to trigger Discord notify and cron logging
+- [x] README.md with full usage docs
+- [x] Error messages review
+- [x] Final test pass
+- [x] `arc --version`
+- **Milestone:** all tests pass, README complete ✓
 
 ### Phase 7: TUI (arc tui)
 
