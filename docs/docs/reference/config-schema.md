@@ -21,7 +21,6 @@ acpx:
   command: acpx
   default_agent: claude
   session_ttl: 300
-  output_format: text
 
 ollama:
   endpoints:
@@ -38,8 +37,6 @@ discord:
 
 git:
   auto_pull: true
-  auto_commit: true
-  auto_push: false
 
 timeouts:
   acpx_request: 300
@@ -175,16 +172,6 @@ This value is informational in arc; the TTL is enforced by `acpx` itself.
 
 ---
 
-### acpx.output_format
-
-| Type | Default |
-|---|---|
-| string | `text` |
-
-The output format requested from `acpx`. arc currently always passes `--format quiet` to suppress progress output; this config value is reserved for future use.
-
----
-
 ## ollama
 
 Named Ollama endpoints for model routing.
@@ -305,22 +292,6 @@ Automatic git operations in agent workspaces.
 | bool | `true` |
 
 When `true`, the daemon runs `git pull` in the agent workspace before each dispatch. This keeps the agent's context files (system prompts, programs, etc.) up to date.
-
-### git.auto_commit
-
-| Type | Default |
-|---|---|
-| bool | `true` |
-
-Reserved for future use. Not currently implemented.
-
-### git.auto_push
-
-| Type | Default |
-|---|---|
-| bool | `false` |
-
-Reserved for future use. Not currently implemented.
 
 ---
 
