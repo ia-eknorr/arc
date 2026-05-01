@@ -2,7 +2,7 @@
 
 [![Lint](https://github.com/ia-eknorr/arc/actions/workflows/lint.yml/badge.svg)](https://github.com/ia-eknorr/arc/actions/workflows/lint.yml)
 [![Unit Tests](https://github.com/ia-eknorr/arc/actions/workflows/test.yml/badge.svg)](https://github.com/ia-eknorr/arc/actions/workflows/test.yml)
-![release](https://img.shields.io/badge/release-v0.1.0-orange)
+[![release](https://img.shields.io/github/v/release/ia-eknorr/arc?color=orange)](https://github.com/ia-eknorr/arc/releases)
 [![license](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
 [![docs](https://img.shields.io/badge/docs-ia--eknorr.github.io-blue)](https://ia-eknorr.github.io/arc/)
 
