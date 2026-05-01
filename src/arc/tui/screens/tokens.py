@@ -118,8 +118,8 @@ class TokensPane(Widget):
             return
 
         name_w = max(len(a.name) for a, _ in per_agent)
-        max_today = max((d.get("today", {}).get("cost", 0.0) for _, d in per_agent), default=0.0) or 0.01
-        max_month = max((d.get("month", {}).get("cost", 0.0) for _, d in per_agent), default=0.0) or 0.01
+        max_today = max((d.get("today", {}).get("cost", 0.0) for _, d in per_agent), default=0.0)
+        max_month = max((d.get("month", {}).get("cost", 0.0) for _, d in per_agent), default=0.0)
 
         lines += ["  [bold]BY AGENT  (today)[/bold]", ""]
         for agent, d in per_agent:
