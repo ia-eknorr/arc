@@ -15,6 +15,7 @@ class AgentConfig:
     permission_mode: str = "approve-all"
     local_context_files: list[str] = field(default_factory=list)
     discord: dict = field(default_factory=dict)
+    timeout: int | None = None  # per-agent acpx timeout override; falls back to config.timeouts.acpx_request
 
 
 @dataclass

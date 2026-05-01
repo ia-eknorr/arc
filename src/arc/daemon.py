@@ -26,6 +26,7 @@ class ArcDaemon:
         self._discord_bot = None
         self._discord_task: asyncio.Task | None = None
         self._cron: "CronManager | None" = None
+        self._background_tasks: set[asyncio.Task] = set()
 
     async def start(self) -> None:
         """Start the daemon: write PID, bind socket, register signals, serve."""
@@ -165,8 +166,16 @@ class ArcDaemon:
         if request.get("op") == "cron_run":
             return await self._handle_cron_run(request.get("job", ""))
 
+        if request.get("no_wait"):
+            task = asyncio.create_task(self._dispatch_request(request))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+            return {"status": "ok", "result": "dispatched"}
 
+        return await self._dispatch_request(request)
 
+    async def _dispatch_request(self, request: dict) -> dict:
+        """Execute a dispatch request and return the result dict."""
         prompt = request.get("prompt", "")
         agent_name = request.get("agent")
         model_override = request.get("model")
@@ -240,8 +249,10 @@ class ArcDaemon:
 
             if result["status"] == "ok":
                 output = result["result"]
-                should_notify = job.notify == "discord" or (
-                    job.notify == "discord_on_urgent" and "urgent" in output.lower()
+                should_notify = (
+                    job.notify == "discord"
+                    or (job.notify == "discord_on_urgent" and "urgent" in output.lower())
+                    or (job.notify == "discord_if_nonempty" and output.strip())
                 )
                 if should_notify:
                     await self._notify_discord(output, job.agent)

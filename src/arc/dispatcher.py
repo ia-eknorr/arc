@@ -157,16 +157,15 @@ async def dispatch_acpx(
             stderr=asyncio.subprocess.PIPE,
         )
 
+        timeout = agent.timeout if agent.timeout is not None else config.timeouts.acpx_request
         try:
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(),
-                timeout=config.timeouts.acpx_request,
+                timeout=timeout,
             )
         except asyncio.TimeoutError:
             proc.kill()
-            raise DispatchError(
-                f"acpx timed out after {config.timeouts.acpx_request}s"
-            )
+            raise DispatchError(f"acpx timed out after {timeout}s")
 
         if proc.returncode != 0:
             raise DispatchError(f"acpx exited {proc.returncode}: {stderr.decode().strip()}")
