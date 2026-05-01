@@ -24,10 +24,10 @@ system_prompt_files:
 
 local_context_files: []
 
-model: claude-sonnet-4-6
+model: sonnet
 allowed_models:
-  - claude-sonnet-4-6
-  - claude-haiku-4-5
+  - sonnet
+  - haiku
 
 permission_mode: approve-all
 
@@ -145,13 +145,21 @@ local_context_files:
 | Type | string |
 | Required | yes |
 
-The default model for this agent. Prefix determines the dispatch path:
+The default model for this agent. The value determines which backend is used:
 
-- `claude-*`: dispatched via `acpx` to Claude Code
-- `ollama/<model>` or `ollama/<endpoint>/<model>`: dispatched via `httpx` to Ollama
+- **acpx alias** (`sonnet`, `haiku`, `default`, `sonnet[1m]`): dispatched via `acpx` to Claude Code
+- **`ollama/<model>`** or **`ollama/<endpoint>/<model>`**: dispatched via `httpx` to Ollama
+
+For Claude models, use the short alias that `acpx` advertises — not the full Anthropic model ID. Using `claude-sonnet-4-6` instead of `sonnet` will cause acpx to reject the request with `Cannot apply --model "claude-sonnet-4-6": the ACP agent did not advertise that model`.
+
+To see which aliases your acpx version supports: `acpx --help | grep -A5 model`
 
 ```yaml
-model: claude-sonnet-4-6
+model: sonnet
+```
+
+```yaml
+model: haiku
 ```
 
 ```yaml
@@ -170,14 +178,14 @@ model: ollama/remote/llama3.2:latest
 |---|---|
 | Type | list[string] |
 | Required | no |
-| Default | `[]` (any model with valid prefix allowed) |
+| Default | `[]` (any model allowed) |
 
-A list of models that callers may request via `--model`, `/model` Discord command, or cron job `model` field. If empty, any model with the correct prefix (`claude-*` or `ollama/*`) is accepted.
+A list of models that callers may request via `--model`, `/model` Discord command, or cron job `model` field. If empty, any model is accepted. Use the same format as the `model` field: acpx aliases for Claude, `ollama/...` for Ollama.
 
 ```yaml
 allowed_models:
-  - claude-sonnet-4-6
-  - claude-haiku-4-5
+  - sonnet
+  - haiku
   - ollama/qwen3:8b
 ```
 

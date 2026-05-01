@@ -20,7 +20,7 @@ arc ask [OPTIONS] [PROMPT]
 |---|---|---|---|---|
 | `PROMPT` | | string | | Prompt text. If omitted, stdin is required. |
 | `--agent` | `-a` | string | | Agent name from `~/.arc/agents/` |
-| `--model` | `-m` | string | | Override model (e.g. `claude-haiku-4-5`, `ollama/qwen3:8b`) |
+| `--model` | `-m` | string | | Override model (e.g. `haiku`, `sonnet`, `ollama/qwen3:8b`) |
 | `--pretty` | | flag | false | Print dispatch info header before the response |
 
 **Behavior:** The CLI first tries the daemon via IPC. If the daemon is not running and `daemon.auto_start` is true, it spawns the daemon and retries. If still unreachable, it dispatches directly.
@@ -33,8 +33,8 @@ You must provide `--agent` or `--model` (or both). Without either, the command e
 # Basic
 arc ask --agent coach "What's my workout today?"
 
-# Override model
-arc ask --agent coach --model claude-haiku-4-5 "Quick question"
+# Override model (use acpx alias for Claude, ollama/ prefix for Ollama)
+arc ask --agent coach --model haiku "Quick question"
 
 # Local Ollama model
 arc ask --agent coach --model ollama/qwen3:8b "Summarize my week"
@@ -47,7 +47,7 @@ cat context.md | arc ask --agent main "Given the above, what should I do next?"
 
 # Show dispatch metadata
 arc ask --agent coach --pretty "Hello"
-# [acpx / claude-sonnet-4-6]
+# [acpx / sonnet]
 #
 # Hello! How can I help?
 ```
@@ -70,7 +70,7 @@ No options. Queries the daemon via IPC if running; otherwise reads config files 
 daemon    running (pid=12345, socket=/Users/you/.arc/arc.sock)
 
 agents
-  coach            claude-sonnet-4-6            /workspace/fitness-coach  discord 1234567890123456789
+  coach            sonnet            /workspace/fitness-coach  discord 1234567890123456789
   trainer          ollama/qwen3:8b              /workspace/fitness-coach
 
 cron
@@ -291,7 +291,7 @@ Lists all YAML files in `~/.arc/agents/` with name, model, workspace, and Discor
 
 ```bash
 arc agent list
-# coach            claude-sonnet-4-6            /workspace/fitness-coach  channel=1234567890123456789
+# coach            sonnet            /workspace/fitness-coach  channel=1234567890123456789
 # trainer          ollama/qwen3:8b              /workspace/fitness-coach
 ```
 
@@ -327,7 +327,7 @@ Without `--from`, prompts for missing values interactively.
 arc agent create
 
 # With flags
-arc agent create --name coach --workspace /workspace/fitness-coach --model claude-sonnet-4-6
+arc agent create --name coach --workspace /workspace/fitness-coach --model sonnet
 
 # From a YAML file
 arc agent create --from ./my-agent.yaml --name my-renamed-agent
@@ -395,7 +395,7 @@ Lists all jobs in `~/.arc/cron/jobs.yaml` with status, schedule, and options.
 arc cron list
 # weekly-plan          [enabled]   0 19 * * 0
 #   Generate weekly training plan every Sunday at 7 PM
-# heartbeat            [enabled]   */30 * * * *  model=claude-haiku-4-5  notify=discord_on_urgent
+# heartbeat            [enabled]   */30 * * * *  model=haiku  notify=discord_on_urgent
 # daily-summary        [disabled]  0 20 * * *
 ```
 
@@ -546,7 +546,7 @@ Reads from `~/.arc/logs/routing.jsonl`.
 ```bash
 arc log routing
 arc log routing --agent coach --last 5
-# 2026-04-30 21:00  coach        claude-sonnet-4-6            discord  What's my workout today?
+# 2026-04-30 21:00  coach        sonnet            discord  What's my workout today?
 ```
 
 ### arc log cron

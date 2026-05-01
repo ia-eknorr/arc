@@ -27,7 +27,7 @@ jobs:
     description: "Background log scanner"
     schedule: "*/30 * * * *"
     agent: coach
-    model: claude-haiku-4-5
+    model: haiku
     prompt: >
       Read HEARTBEAT.md and follow the instructions there strictly.
     notify: discord_on_urgent
@@ -160,16 +160,13 @@ notify: discord_on_urgent
 |---|---|
 | string or null | `null` (use agent's default model) |
 
-Override the agent's default model for this job. Follows the same prefix conventions as all other model strings:
-
-- `claude-*`: dispatch via acpx
-- `ollama/<model>` or `ollama/<endpoint>/<model>`: dispatch via Ollama
+Override the agent's default model for this job. Uses the same format as the agent `model` field: acpx aliases for Claude, `ollama/...` for Ollama.
 
 The override is validated against `allowed_models` if the agent has that list configured.
 
 ```yaml
-model: claude-haiku-4-5     # cheaper for frequent runs
-model: ollama/qwen3:8b      # local model for privacy-sensitive runs
+model: haiku            # cheaper for frequent runs
+model: ollama/qwen3:8b  # local model for privacy-sensitive runs
 ```
 
 ---
