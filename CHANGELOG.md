@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v0.2.0] - 2026-05-01
+
+### Added
+
+- **TUI (`arc tui`)** -- k9s-style management interface built with Textual. Four screens: Status,
+  Agents, Cron, and Config. Launches to the Status screen with auto-refresh every 5 seconds.
+
+- **Agents screen** -- list all agents, view and edit model/workspace/discord fields inline,
+  create new agents via `n`, delete with confirmation via `d`, open YAML in `$EDITOR` via `e`.
+
+- **Cron screen** -- list all jobs with next-run times, toggle enabled/disabled via `space`,
+  trigger immediately via `r`, open job in `$EDITOR` via `e`, create and delete jobs.
+
+- **Config screen** -- inline editing of common config fields (boolean toggle via `space`,
+  numeric edit via `enter`), full file edit via `e`.
+
+- **Tokens pane** -- per-agent Claude Code token usage via codeburn integration, shown as bar
+  charts in the TUI.
+
+- **Logs pane** -- live tail of routing.jsonl and cron.jsonl within the TUI.
+
+- **vim navigation** -- `j`/`k` move list cursor, `h`/`l` switch tabs from anywhere in the
+  interface.
+
+- **Graceful daemon-offline degradation** -- all screens work when the daemon is not running.
+  Status screen shows daemon state and offers start/stop. Cron "run now" is grayed out.
+
+- **LXC system service install** -- documented how to install arc-daemon as a system service
+  (`/etc/systemd/system/`) for environments where user systemd is not available (e.g. `pct exec`
+  on Proxmox LXC containers).
+
 ## [v0.1.0] - 2026-05-01
 
 ### Added
@@ -42,4 +73,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - **Docusaurus documentation site** — Full docs at `https://ia-eknorr.github.io/arc/` covering architecture, all CLI commands, agent/config/cron schema references, guides, and troubleshooting.
 
+[v0.2.0]: https://github.com/ia-eknorr/arc/releases/tag/v0.2.0
 [v0.1.0]: https://github.com/ia-eknorr/arc/releases/tag/v0.1.0

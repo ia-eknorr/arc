@@ -8,6 +8,20 @@ Full release notes are in [CHANGELOG.md](https://github.com/ia-eknorr/arc/blob/m
 
 ---
 
+## [v0.2.0] — 2026-05-01
+
+### Added
+
+- TUI (`arc tui`) -- k9s-style interface with Status, Agents, Cron, Config, Tokens, and Logs panes
+- vim navigation throughout: `j`/`k` cursor, `h`/`l` tab switching
+- Inline agent/cron/config editing, create/delete, `$EDITOR` escape hatch on every screen
+- Graceful degradation when daemon is not running
+- LXC system service install documentation
+
+[v0.2.0]: https://github.com/ia-eknorr/arc/releases/tag/v0.2.0
+
+---
+
 ## [v0.1.0] — 2026-05-01
 
 **Initial release.**
