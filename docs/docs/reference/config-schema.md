@@ -32,7 +32,7 @@ discord:
   enabled: false
   token_env: DISCORD_BOT_TOKEN
   guild_id: ""
-  thread_mode: true
+  thread_mode: false
   rate_limit:
     messages_per_minute: 5
 
@@ -270,7 +270,7 @@ discord:
 
 | Type | Default |
 |---|---|
-| bool | `true` |
+| bool | `false` |
 
 When `true`, the bot creates a new thread for each message that arrives outside a thread. Threads use persistent named `acpx` sessions so conversation context is preserved across messages in the same thread.
 

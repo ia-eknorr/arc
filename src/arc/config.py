@@ -44,7 +44,7 @@ class DiscordConfig:
     enabled: bool = False
     token_env: str = "DISCORD_BOT_TOKEN"
     guild_id: str = ""
-    thread_mode: bool = True
+    thread_mode: bool = False
     rate_limit: DiscordRateLimit = field(default_factory=DiscordRateLimit)
 
 
@@ -102,7 +102,7 @@ def _parse_discord(data: dict) -> DiscordConfig:
         enabled=data.get("enabled", False),
         token_env=data.get("token_env", "DISCORD_BOT_TOKEN"),
         guild_id=data.get("guild_id", ""),
-        thread_mode=data.get("thread_mode", True),
+        thread_mode=data.get("thread_mode", False),
         rate_limit=DiscordRateLimit(
             messages_per_minute=rl_data.get("messages_per_minute", 5)
         ),

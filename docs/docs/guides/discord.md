@@ -42,7 +42,7 @@ discord:
   enabled: true
   token_env: DISCORD_BOT_TOKEN   # environment variable name (not the token itself)
   guild_id: "1234567890123456789"  # your server's ID
-  thread_mode: true
+  thread_mode: false
   rate_limit:
     messages_per_minute: 5
 ```
