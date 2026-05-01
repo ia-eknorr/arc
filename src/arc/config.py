@@ -228,4 +228,14 @@ def load_config(config_dir: Path | None = None) -> ArcConfig:
     except yaml.YAMLError as e:
         raise ValueError(f"Corrupt config file {config_file}: {e}") from e
 
-    return _from_dict(data)
+    cfg = _from_dict(data)
+
+    # When daemon paths are not set in config.yaml, resolve them relative to
+    # config_dir so that non-default config dirs work correctly.
+    d = data.get("daemon", {})
+    if "pid_file" not in d:
+        cfg.daemon.pid_file = str(config_dir / "daemon.pid")
+    if "socket_path" not in d:
+        cfg.daemon.socket_path = str(config_dir / "arc.sock")
+
+    return cfg
