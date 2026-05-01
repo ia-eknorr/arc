@@ -98,8 +98,6 @@ class CronPane(Widget):
         Binding("e", "edit_in_editor", "Editor"),
         Binding("n", "new_job", "New"),
         Binding("d", "delete_job", "Delete"),
-        Binding("l", "focus_detail", "Detail", show=False),
-        Binding("h", "focus_list", "List", show=False),
         Binding("enter", "focus_detail", "Detail", show=False),
         Binding("j", "cursor_down", "Down", show=False),
         Binding("k", "cursor_up", "Up", show=False),
@@ -188,9 +186,6 @@ class CronPane(Widget):
 
     def action_focus_detail(self) -> None:
         self.query_one("#cron-detail-pane").focus()
-
-    def action_focus_list(self) -> None:
-        self.query_one("#cron-list", VimListView).focus()
 
     def action_toggle_job(self) -> None:
         job = self._selected_job()

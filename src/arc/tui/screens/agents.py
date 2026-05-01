@@ -240,8 +240,6 @@ class AgentsPane(Widget):
         Binding("d", "delete_agent", "Delete"),
         Binding("e", "edit_in_editor", "Editor"),
         Binding("c", "change_model", "Change model"),
-        Binding("l", "focus_detail", "Detail", show=False),
-        Binding("h", "focus_list", "List", show=False),
         Binding("enter", "focus_detail", "Detail", show=False),
         Binding("j", "cursor_down", "Down", show=False),
         Binding("k", "cursor_up", "Up", show=False),
@@ -334,9 +332,6 @@ class AgentsPane(Widget):
 
     def action_focus_detail(self) -> None:
         self.query_one("#agents-detail-pane").focus()
-
-    def action_focus_list(self) -> None:
-        self.query_one("#agents-list", VimListView).focus()
 
     def action_new_agent(self) -> None:
         async def _do() -> None:

@@ -17,6 +17,8 @@ class ArcTUI(App[None]):
     TITLE = "arc"
     BINDINGS = [
         Binding("q", "quit", "Quit", priority=True),
+        Binding("l", "next_tab", "Next tab", show=False),
+        Binding("h", "prev_tab", "Prev tab", show=False),
     ]
 
     DEFAULT_CSS = """
@@ -63,6 +65,12 @@ class ArcTUI(App[None]):
             with TabPane("Config", id="config"):
                 yield ConfigPane(id="config-pane")
         yield Footer()
+
+    def action_next_tab(self) -> None:
+        self.query_one(TabbedContent).action_next_tab()
+
+    def action_prev_tab(self) -> None:
+        self.query_one(TabbedContent).action_previous_tab()
 
     def on_tabbed_content_tab_activated(
         self, event: TabbedContent.TabActivated
