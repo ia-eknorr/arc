@@ -19,9 +19,8 @@ runner = CliRunner()
 
 def test_version_prints_version() -> None:
     result = runner.invoke(app, ["version"])
-    # exit_code may be 1 if package metadata is absent in dev installs, but the
-    # command should at minimum run; just check it emits something with "arc"
-    assert "arc" in result.output or result.exit_code == 0
+    assert result.exit_code == 0
+    assert "arc" in result.output
 
 
 # ---------------------------------------------------------------------------

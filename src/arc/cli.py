@@ -11,7 +11,7 @@ import typer
 from arc.config import load_config
 from arc.dispatcher import DispatchError, dispatch
 from arc.types import AgentConfig
-from arc.utils import configure_logging, is_process_running, read_pid, write_pid
+from arc.utils import configure_logging, is_process_running, read_pid
 
 app = typer.Typer(
     name="arc",
@@ -198,8 +198,6 @@ def daemon_start(
     config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
 ) -> None:
     """Start the arc daemon."""
-    cfg = load_config(config_dir)
-
     if _daemon_is_running(config_dir):
         typer.echo("Daemon is already running.")
         raise typer.Exit(0)
@@ -372,9 +370,11 @@ def cron_next(
     config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
 ) -> None:
     """Show next scheduled run time for each enabled job."""
-    from arc.cron import load_jobs
-    from apscheduler.triggers.cron import CronTrigger
     from datetime import datetime, timezone
+
+    from apscheduler.triggers.cron import CronTrigger
+
+    from arc.cron import load_jobs
 
     cfg = load_config(config_dir)
     jobs = load_jobs(cfg)
@@ -443,6 +443,7 @@ def _relative_time(iso: str) -> str:
 def _next_fire_offline(schedule: str) -> str | None:
     """Compute next fire time for a cron expression without a running scheduler."""
     from datetime import datetime, timezone
+
     from apscheduler.triggers.cron import CronTrigger
     try:
         trigger = CronTrigger.from_crontab(schedule)
@@ -1153,6 +1154,33 @@ def version_cmd() -> None:
     from importlib.metadata import PackageNotFoundError, version
 
     try:
-        typer.echo(f"arc {version('arc')}")
+        ver = version("arc-cli")
     except PackageNotFoundError:
-        typer.echo("arc (version unknown)")
+        try:
+            ver = version("arc")
+        except PackageNotFoundError:
+            ver = "dev"
+    typer.echo(f"arc {ver}")
+
+
+# ---------------------------------------------------------------------------
+# arc tui
+# ---------------------------------------------------------------------------
+
+
+@app.command("tui")
+def tui_cmd() -> None:
+    """Launch the interactive TUI (requires: pip install 'arc-cli[tui]')."""
+    try:
+        from arc.tui.app import ArcTUI
+    except ImportError:
+        typer.echo(
+            "Error: textual is not installed. Install it with:\n"
+            "  pip install 'arc-cli[tui]'\n"
+            "or:\n"
+            "  pip install textual",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    ArcTUI().run()
