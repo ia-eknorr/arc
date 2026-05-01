@@ -158,6 +158,11 @@ class ArcDaemon:
         if request.get("op") == "status":
             return await self._handle_status()
 
+        if request.get("op") == "cron_run":
+            return await self._handle_cron_run(request.get("job", ""))
+
+
+
         prompt = request.get("prompt", "")
         agent_name = request.get("agent")
         model_override = request.get("model")
@@ -248,6 +253,17 @@ class ArcDaemon:
             )
         except Exception as e:
             log.error(f"cron: {job.name} failed: {e}")
+
+    async def _handle_cron_run(self, job_name: str) -> dict:
+        """Run a named cron job manually, with Discord notify and logging."""
+        if not self._cron:
+            return {"status": "error", "error": "Cron not initialized."}
+        jobs = {j.name: j for j in self._cron.get_jobs()}
+        if job_name not in jobs:
+            available = ", ".join(jobs.keys()) or "(none)"
+            return {"status": "error", "error": f"Job '{job_name}' not found. Available: {available}"}
+        await self.run_cron_job(jobs[job_name])
+        return {"status": "ok", "result": f"Job '{job_name}' completed."}
 
     async def _notify_discord(self, content: str, agent_name: str) -> None:
         """Send content to the agent's configured Discord channel."""

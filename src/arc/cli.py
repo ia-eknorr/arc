@@ -62,6 +62,13 @@ def _arc_executable() -> str:
     return shutil.which("arc") or sys.argv[0]
 
 
+def _logs_dir(config_dir: Path | None) -> Path:
+    if config_dir is not None:
+        return Path(config_dir) / "logs"
+    cfg = load_config(None)
+    return Path(cfg.daemon.socket_path).expanduser().parent / "logs"
+
+
 # ---------------------------------------------------------------------------
 # arc ask
 # ---------------------------------------------------------------------------
@@ -332,14 +339,10 @@ def cron_run(
 
     async def _run() -> None:
         from arc import ipc as _ipc
-        response = await _ipc.request(cfg, {
-            "prompt": job.prompt,
-            "agent": job.agent,
-            "model": job.model,
-            "source": "cron",
-        })
+        # Route through daemon's run_cron_job so Discord notify and logging fire.
+        response = await _ipc.request(cfg, {"op": "cron_run", "job": name})
         if response is None:
-            # Daemon not running - dispatch directly
+            # Daemon not running - dispatch directly (no Discord notify in this path).
             from arc.agents import load_agent
             from arc.dispatcher import DispatchError, dispatch
             try:
@@ -709,6 +712,437 @@ def import_openclaw_cmd(
 
 
 # ---------------------------------------------------------------------------
+# arc cron add/remove/edit/history
+# ---------------------------------------------------------------------------
+
+
+@cron_app.command("add")
+def cron_add(
+    name: Annotated[str, typer.Option("--name", "-n", help="Job name.")] = "",
+    schedule: Annotated[str, typer.Option("--schedule", "-s", help="Cron schedule expression.")] = "",
+    agent: Annotated[str, typer.Option("--agent", "-a", help="Agent name.")] = "",
+    prompt: Annotated[str, typer.Option("--prompt", "-p", help="Prompt to send.")] = "",
+    notify: Annotated[str, typer.Option("--notify", help="Notification mode: discord, discord_on_urgent.")] = "",
+    model: Annotated[str | None, typer.Option("--model", "-m", help="Model override.")] = None,
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Add a new cron job."""
+    name = name or typer.prompt("Job name")
+    schedule = schedule or typer.prompt("Schedule (cron expression)")
+    agent = agent or typer.prompt("Agent name")
+    prompt = prompt or typer.prompt("Prompt")
+
+    cfg = load_config(config_dir)
+    config_dir_path = Path(cfg.daemon.pid_file).expanduser().parent
+    jobs_file = config_dir_path / "cron" / "jobs.yaml"
+    jobs_file.parent.mkdir(parents=True, exist_ok=True)
+
+    data = {}
+    if jobs_file.exists():
+        import yaml
+        data = yaml.safe_load(jobs_file.read_text()) or {}
+    data.setdefault("jobs", {})
+
+    if name in data["jobs"]:
+        typer.echo(f"Error: job '{name}' already exists. Use 'arc cron edit' to modify.", err=True)
+        raise typer.Exit(1)
+
+    job: dict = {"schedule": schedule, "agent": agent, "prompt": prompt, "enabled": True}
+    if notify:
+        job["notify"] = notify
+    if model:
+        job["model"] = model
+
+    data["jobs"][name] = job
+    import yaml
+    jobs_file.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True))
+    typer.echo(f"Added job '{name}'. Restart daemon to schedule it.")
+
+
+@cron_app.command("remove")
+def cron_remove(
+    name: Annotated[str, typer.Argument(help="Job name to remove.")],
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Remove a cron job."""
+    import yaml
+    cfg = load_config(config_dir)
+    config_dir_path = Path(cfg.daemon.pid_file).expanduser().parent
+    jobs_file = config_dir_path / "cron" / "jobs.yaml"
+
+    if not jobs_file.exists():
+        typer.echo(f"Error: job '{name}' not found.", err=True)
+        raise typer.Exit(1)
+
+    data = yaml.safe_load(jobs_file.read_text()) or {}
+    if name not in (data.get("jobs") or {}):
+        typer.echo(f"Error: job '{name}' not found.", err=True)
+        raise typer.Exit(1)
+
+    del data["jobs"][name]
+    jobs_file.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True))
+    typer.echo(f"Removed job '{name}'. Restart daemon to apply.")
+
+
+@cron_app.command("edit")
+def cron_edit(
+    name: Annotated[str, typer.Argument(help="Job name to edit.")],
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Open the cron jobs file in $EDITOR."""
+    import os
+    cfg = load_config(config_dir)
+    config_dir_path = Path(cfg.daemon.pid_file).expanduser().parent
+    jobs_file = config_dir_path / "cron" / "jobs.yaml"
+    editor = os.environ.get("EDITOR", "vi")
+    subprocess.run([editor, str(jobs_file)])
+
+
+@cron_app.command("history")
+def cron_history(
+    name: Annotated[str | None, typer.Argument(help="Filter by job name.")] = None,
+    last: Annotated[int, typer.Option("--last", "-n", help="Number of entries to show.")] = 10,
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Show recent cron job run history."""
+    import json
+    log_file = _logs_dir(config_dir) / "cron.jsonl"
+
+    if not log_file.exists():
+        typer.echo("No cron history yet.")
+        return
+
+    lines = log_file.read_text().splitlines()
+    records = []
+    for line in lines:
+        try:
+            r = json.loads(line)
+            if name is None or r.get("job") == name:
+                records.append(r)
+        except json.JSONDecodeError:
+            pass
+
+    for r in records[-last:]:
+        ts = r.get("timestamp", "")[:19].replace("T", " ")
+        job = r.get("job", "?")
+        status = r.get("status", "?")
+        preview = r.get("output_preview", "")[:80]
+        typer.echo(f"{ts}  {job:<20} [{status}]  {preview}")
+
+
+# ---------------------------------------------------------------------------
+# arc agent
+# ---------------------------------------------------------------------------
+
+
+agent_app = typer.Typer(name="agent", help="Manage arc agents.", no_args_is_help=True)
+app.add_typer(agent_app, name="agent")
+
+
+def _agents_dir(config_dir: Path | None) -> Path:
+    if config_dir is not None:
+        return Path(config_dir) / "agents"
+    cfg = load_config(None)
+    return Path(cfg.daemon.pid_file).expanduser().parent / "agents"
+
+
+@agent_app.command("list")
+def agent_list(
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """List configured agents."""
+    from arc.agents import list_agents
+    agents = list_agents(config_dir)
+    if not agents:
+        typer.echo("No agents configured. Add YAML files to ~/.arc/agents/")
+        return
+    for a in agents:
+        channel = a.discord.get("channel_id", "")
+        channel_str = f"  channel={channel}" if channel else ""
+        typer.echo(f"{a.name:<16} {a.model:<28} {a.workspace}{channel_str}")
+
+
+@agent_app.command("show")
+def agent_show(
+    name: Annotated[str, typer.Argument(help="Agent name.")],
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Show agent configuration."""
+    agents_dir = _agents_dir(config_dir)
+    path = agents_dir / f"{name}.yaml"
+    if not path.exists():
+        typer.echo(f"Error: agent '{name}' not found.", err=True)
+        raise typer.Exit(1)
+    typer.echo(path.read_text())
+
+
+@agent_app.command("create")
+def agent_create(
+    from_file: Annotated[Path | None, typer.Option("--from", help="Copy from existing YAML file.")] = None,
+    name: Annotated[str, typer.Option("--name", "-n")] = "",
+    workspace: Annotated[str, typer.Option("--workspace", "-w")] = "",
+    model: Annotated[str, typer.Option("--model", "-m")] = "",
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Create a new agent."""
+    import yaml
+    agents_dir = _agents_dir(config_dir)
+    agents_dir.mkdir(parents=True, exist_ok=True)
+
+    if from_file:
+        if not from_file.exists():
+            typer.echo(f"Error: file not found: {from_file}", err=True)
+            raise typer.Exit(1)
+        data = yaml.safe_load(from_file.read_text())
+        dest_name = name or data.get("name") or from_file.stem
+        dest = agents_dir / f"{dest_name}.yaml"
+        if dest.exists():
+            typer.echo(f"Error: agent '{dest_name}' already exists.", err=True)
+            raise typer.Exit(1)
+        data["name"] = dest_name
+        dest.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True))
+        typer.echo(f"Created agent '{dest_name}'.")
+        return
+
+    name = name or typer.prompt("Agent name")
+    workspace = workspace or typer.prompt("Workspace path")
+    model = model or typer.prompt("Model", default="claude-sonnet-4-6")
+
+    dest = agents_dir / f"{name}.yaml"
+    if dest.exists():
+        typer.echo(f"Error: agent '{name}' already exists.", err=True)
+        raise typer.Exit(1)
+
+    data = {
+        "name": name,
+        "description": "",
+        "workspace": workspace,
+        "system_prompt_files": ["AGENTS.md", "IDENTITY.md", "SOUL.md", "USER.md", "TOOLS.md"],
+        "model": model,
+        "allowed_models": [model],
+        "permission_mode": "approve-all",
+        "discord": {},
+    }
+    dest.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True))
+    typer.echo(f"Created agent '{name}' at {dest}")
+
+
+@agent_app.command("edit")
+def agent_edit(
+    name: Annotated[str, typer.Argument(help="Agent name.")],
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Open an agent config in $EDITOR."""
+    import os
+    agents_dir = _agents_dir(config_dir)
+    path = agents_dir / f"{name}.yaml"
+    if not path.exists():
+        typer.echo(f"Error: agent '{name}' not found.", err=True)
+        raise typer.Exit(1)
+    editor = os.environ.get("EDITOR", "vi")
+    subprocess.run([editor, str(path)])
+
+
+@agent_app.command("delete")
+def agent_delete(
+    name: Annotated[str, typer.Argument(help="Agent name.")],
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation.")] = False,
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Delete an agent."""
+    agents_dir = _agents_dir(config_dir)
+    path = agents_dir / f"{name}.yaml"
+    if not path.exists():
+        typer.echo(f"Error: agent '{name}' not found.", err=True)
+        raise typer.Exit(1)
+    if not yes:
+        typer.confirm(f"Delete agent '{name}'?", abort=True)
+    path.unlink()
+    typer.echo(f"Deleted agent '{name}'.")
+
+
+@agent_app.command("clone")
+def agent_clone(
+    name: Annotated[str, typer.Argument(help="Source agent name.")],
+    new_name: Annotated[str, typer.Argument(help="New agent name.")],
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Clone an agent under a new name."""
+    import yaml
+    agents_dir = _agents_dir(config_dir)
+    src = agents_dir / f"{name}.yaml"
+    dest = agents_dir / f"{new_name}.yaml"
+    if not src.exists():
+        typer.echo(f"Error: agent '{name}' not found.", err=True)
+        raise typer.Exit(1)
+    if dest.exists():
+        typer.echo(f"Error: agent '{new_name}' already exists.", err=True)
+        raise typer.Exit(1)
+    data = yaml.safe_load(src.read_text())
+    data["name"] = new_name
+    data.setdefault("discord", {}).pop("channel_id", None)
+    dest.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True))
+    typer.echo(f"Cloned '{name}' -> '{new_name}'. Edit {dest} to configure.")
+
+
+# ---------------------------------------------------------------------------
+# arc log
+# ---------------------------------------------------------------------------
+
+
+log_app = typer.Typer(name="log", help="View arc logs.", no_args_is_help=True)
+app.add_typer(log_app, name="log")
+
+
+def _read_jsonl(path: Path, last: int, job_filter: str | None = None) -> list[dict]:
+    import json
+    if not path.exists():
+        return []
+    records = []
+    for line in path.read_text().splitlines():
+        try:
+            r = json.loads(line)
+            if job_filter is None or r.get("job") == job_filter or r.get("agent") == job_filter:
+                records.append(r)
+        except json.JSONDecodeError:
+            pass
+    return records[-last:]
+
+
+@log_app.command("routing")
+def log_routing(
+    last: Annotated[int, typer.Option("--last", "-n")] = 20,
+    agent: Annotated[str | None, typer.Option("--agent", "-a")] = None,
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Show recent routing log entries."""
+    log_file = _logs_dir(config_dir) / "routing.jsonl"
+    records = _read_jsonl(log_file, last, agent)
+    if not records:
+        typer.echo("No routing log entries.")
+        return
+    for r in records:
+        ts = r.get("timestamp", "")[:19].replace("T", " ")
+        typer.echo(
+            f"{ts}  {r.get('agent','?'):<12} {r.get('model','?'):<28} "
+            f"{r.get('source','?'):<8} {r.get('prompt_preview','')[:60]}"
+        )
+
+
+@log_app.command("cron")
+def log_cron(
+    last: Annotated[int, typer.Option("--last", "-n")] = 10,
+    job: Annotated[str | None, typer.Option("--job", "-j")] = None,
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Show recent cron run log entries."""
+    log_file = _logs_dir(config_dir) / "cron.jsonl"
+    records = _read_jsonl(log_file, last, job)
+    if not records:
+        typer.echo("No cron log entries.")
+        return
+    for r in records:
+        ts = r.get("timestamp", "")[:19].replace("T", " ")
+        preview = r.get("output_preview", "")[:80]
+        typer.echo(f"{ts}  {r.get('job','?'):<20} [{r.get('status','?')}]  {preview}")
+
+
+@log_app.command("tail")
+def log_tail(
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Tail the daemon log file (requires log_file configured)."""
+    log_dir = _logs_dir(config_dir)
+    routing = log_dir / "routing.jsonl"
+    cron = log_dir / "cron.jsonl"
+    files = [str(f) for f in (routing, cron) if f.exists()]
+    if not files:
+        typer.echo("No log files found yet.")
+        return
+    subprocess.run(["tail", "-f"] + files)
+
+
+# ---------------------------------------------------------------------------
+# arc config
+# ---------------------------------------------------------------------------
+
+
+config_app = typer.Typer(name="config", help="Manage arc configuration.", no_args_is_help=True)
+app.add_typer(config_app, name="config")
+
+
+def _config_path(config_dir: Path | None) -> Path:
+    if config_dir is not None:
+        return Path(config_dir) / "config.yaml"
+    cfg = load_config(None)
+    return Path(cfg.daemon.pid_file).expanduser().parent / "config.yaml"
+
+
+@config_app.command("show")
+def config_show(
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Show current configuration."""
+    path = _config_path(config_dir)
+    if not path.exists():
+        typer.echo("No config file found. Run: arc setup")
+        return
+    typer.echo(path.read_text())
+
+
+@config_app.command("edit")
+def config_edit(
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Open config in $EDITOR."""
+    import os
+    path = _config_path(config_dir)
+    editor = os.environ.get("EDITOR", "vi")
+    subprocess.run([editor, str(path)])
+
+
+@config_app.command("set")
+def config_set(
+    key: Annotated[str, typer.Argument(help="Dot-notation key (e.g. daemon.auto_start).")],
+    value: Annotated[str, typer.Argument(help="Value to set.")],
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Set a config value using dot-notation."""
+    import yaml
+
+    path = _config_path(config_dir)
+    if not path.exists():
+        typer.echo("No config file found. Run: arc setup", err=True)
+        raise typer.Exit(1)
+
+    data = yaml.safe_load(path.read_text()) or {}
+    parts = key.split(".")
+
+    # Parse value type
+    parsed: bool | int | str
+    if value.lower() == "true":
+        parsed = True
+    elif value.lower() == "false":
+        parsed = False
+    else:
+        try:
+            parsed = int(value)
+        except ValueError:
+            parsed = value
+
+    # Navigate to the parent dict
+    node = data
+    for part in parts[:-1]:
+        if part not in node or not isinstance(node[part], dict):
+            node[part] = {}
+        node = node[part]
+    node[parts[-1]] = parsed
+
+    path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True))
+    typer.echo(f"Set {key} = {parsed}")
+
+
+# ---------------------------------------------------------------------------
 # arc version
 # ---------------------------------------------------------------------------
 
@@ -716,5 +1150,9 @@ def import_openclaw_cmd(
 @app.command("version")
 def version_cmd() -> None:
     """Print arc version."""
-    from arc import __version__
-    typer.echo(f"arc {__version__}")
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        typer.echo(f"arc {version('arc')}")
+    except PackageNotFoundError:
+        typer.echo("arc (version unknown)")

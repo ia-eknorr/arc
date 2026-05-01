@@ -1443,6 +1443,224 @@ arc daemon start   # then @mention in Discord
 - [ ] `arc --version`
 - **Milestone:** all tests pass, README complete
 
+### Phase 7: TUI (arc tui)
+
+> Tracked in gh #5. Depends on Phase 6 being complete -- the TUI wraps the same
+> underlying operations as the Phase 6 CLI commands, so those must exist first.
+
+A k9s-style management interface for arc. Goal: common operational tasks (changing
+an agent's model, toggling a cron job, checking status) without hand-editing YAML.
+Not a replacement for `arc ask` -- prompt dispatch stays in the CLI.
+
+**Library:** [Textual](https://textual.textualize.io/) (`pip install textual`)
+
+Add to `pyproject.toml` dependencies. New files:
+
+```
+src/arc/
+  tui/
+    __init__.py
+    app.py          # ArcTUI(App) -- entry point, screen routing
+    screens/
+      agents.py     # AgentsScreen
+      cron.py       # CronScreen
+      config.py     # ConfigScreen
+      status.py     # StatusScreen
+    widgets/
+      agent_detail.py
+      cron_detail.py
+```
+
+Invoked via `arc tui`.
+
+#### Screens
+
+**Status screen (default/home)**
+
+Shown on launch. Auto-refreshes every 5 seconds via Textual's `set_interval`.
+
+```
+arc  [Agents]  [Cron]  [Config]  [Status*]           q:quit  r:refresh
+
+  daemon    running  pid=12345  socket=~/.arc/arc.sock
+
+  AGENTS
+  coach    claude-sonnet-4-6   /workspace/fitness-coach   discord 9999
+  trainer  ollama/qwen3:8b     /workspace/trainer
+
+  CRON
+  weekly-plan   next: in 3h 14m   enabled
+  heartbeat     next: in 8 min    enabled
+  daily-brief   --                disabled
+```
+
+Sends `{"op": "status"}` IPC op (already implemented). Falls back to config-file
+read when daemon is not running (same logic as `arc status` CLI command).
+
+Keybindings:
+- `r` - manual refresh
+- `s` - start/stop daemon (calls `arc daemon start/stop` as subprocess)
+- `tab` - cycle to next screen
+
+**Agents screen**
+
+```
+arc  [Agents*]  [Cron]  [Config]  [Status]           q:quit  n:new  d:delete
+
+  coach    claude-sonnet-4-6   /workspace/fitness-coach
+  trainer  ollama/qwen3:8b     /workspace/trainer
+
+  ── coach ──────────────────────────────────────────────────────
+  name:              coach
+  description:       Coach Kai - personal fitness coach
+  workspace:         /workspace/fitness-coach
+  model:             claude-sonnet-4-6          [change]
+  allowed_models:    claude-sonnet-4-6
+                     claude-haiku-4-5           [+ add]  [- remove]
+  permission_mode:   approve-all                [change]
+  system_prompt_files:
+                     AGENTS.md
+                     IDENTITY.md
+                     SOUL.md
+  discord channel:   9999
+```
+
+Selecting an agent opens its detail panel in a split view. All edits write directly
+to `~/.arc/agents/<name>.yaml` on confirmation.
+
+Keybindings:
+- `arrow up/down` - navigate agent list
+- `enter` - open detail panel
+- `e` - open agent YAML in `$EDITOR` (escape hatch for complex edits)
+- `n` - new agent (prompts for name, workspace, model -- creates YAML with defaults)
+- `d` - delete selected agent (confirm prompt)
+- `c` - change model (opens model picker from `allowed_models`)
+
+**Cron screen**
+
+```
+arc  [Agents]  [Cron*]  [Config]  [Status]       q:quit  n:new  space:toggle
+
+  NAME           SCHEDULE       AGENT    NEXT          STATUS
+  weekly-plan    0 19 * * 0     coach    in 3h 14m     enabled
+  heartbeat      */30 * * * *   coach    in 8 min      enabled
+  daily-brief    0 7 * * *      coach    --            disabled
+
+  ── weekly-plan ────────────────────────────────────────────────
+  schedule:    0 19 * * 0  (Sundays at 7 PM)
+  agent:       coach
+  model:       (agent default)
+  notify:      discord
+  prompt:
+    It's a new week. Pull my Strava data from the past week...
+```
+
+Keybindings:
+- `space` - toggle enabled/disabled for selected job
+- `r` - run selected job now (sends `{"op": "cron_run", "job": name}` IPC op)
+- `e` - open job in `$EDITOR`
+- `n` - new job (interactive form)
+- `d` - delete job (confirm prompt)
+
+**Config screen**
+
+Editable view of `~/.arc/config.yaml`. Shows only the most commonly changed
+settings inline; opens `$EDITOR` for full file editing.
+
+```
+arc  [Agents]  [Cron]  [Config*]  [Status]              q:quit  e:edit-file
+
+  DAEMON
+  auto_start:      true       [toggle]
+  log_level:       info       [change: debug / info / warning / error]
+  socket_path:     ~/.arc/arc.sock
+  pid_file:        ~/.arc/daemon.pid
+
+  TIMEOUTS
+  acpx_request:    300s       [edit]
+  ollama_request:  120s       [edit]
+
+  OLLAMA ENDPOINTS
+  local:           http://localhost:11434/v1    [edit]  [- remove]
+  kyle:            http://kyle.local:11434/v1  [edit]  [- remove]
+                                                        [+ add]
+
+  DISCORD
+  enabled:         false      [toggle]
+  guild_id:        1234
+```
+
+Keybindings:
+- `e` - open full `config.yaml` in `$EDITOR`
+- `enter` on a field - inline edit (opens input widget)
+- `space` on a boolean - toggle
+
+#### Persistence
+
+All writes go through the same YAML load/save functions used by the CLI:
+- Agents: read/write `~/.arc/agents/<name>.yaml`
+- Cron: read/write `~/.arc/cron/jobs.yaml`
+- Config: read/write `~/.arc/config.yaml`
+
+The TUI does not write through the daemon. It edits files directly and the daemon
+picks up changes on the next relevant operation. Daemon restart is not required for
+agent or cron changes (the daemon re-reads on each dispatch). Config changes that
+affect the daemon process (log level, socket path) do require a restart; the Config
+screen will show a warning when such a field is edited.
+
+#### Graceful degradation
+
+The TUI must work when the daemon is not running:
+- Status screen shows "daemon not running" and reads config files for agent/cron data
+- Agents and Config screens work fully (file-based reads/writes)
+- Cron screen shows jobs but grays out "run now" (requires daemon)
+- Start daemon button available on Status screen
+
+#### Dependencies
+
+Add to `pyproject.toml`:
+
+```toml
+[project.optional-dependencies]
+tui = ["textual>=0.80"]
+```
+
+Kept as an optional extra so the core arc install stays minimal. Install with:
+`pip install -e ".[tui]"`. The `arc tui` command prints a helpful error if Textual
+is not installed.
+
+#### Testing
+
+Textual has a testing framework (`textual.testing.AppTest`) that simulates key
+presses and inspects rendered output. Tests go in `tests/test_tui/`.
+
+Test coverage targets:
+- Each screen renders without error (daemon running and not running)
+- Agent model change writes correct YAML
+- Cron enable/disable toggle writes correct YAML
+- Config field edit writes correct value
+- `arc tui` exits cleanly on `q`
+
+Do not test visual layout or colors. Test state changes and file writes.
+
+#### Definition of done
+
+- [ ] `arc tui` launches and shows Status screen
+- [ ] All four screens reachable via tab/click
+- [ ] Status screen auto-refreshes every 5 seconds
+- [ ] Agent model can be changed inline and persists to YAML
+- [ ] Agent can be created with required fields via `n` shortcut
+- [ ] Agent can be deleted with confirmation
+- [ ] Cron job can be enabled/disabled via `space`
+- [ ] Cron job can be triggered immediately via `r` (daemon must be running)
+- [ ] Config boolean fields toggle correctly and persist
+- [ ] Config numeric fields (timeouts) edit inline and persist
+- [ ] All screens degrade gracefully when daemon is not running
+- [ ] `$EDITOR` escape hatch works on Agents, Cron, and Config screens
+- [ ] `arc tui` prints install hint if Textual not installed
+- [ ] All tests pass (`pytest tests/test_tui/`)
+- [ ] No regressions in existing CLI tests
+
 ---
 
 ## 11. Risks and Mitigations

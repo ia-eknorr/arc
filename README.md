@@ -61,8 +61,10 @@ arc ask --pretty --agent coach "Explain periodization"
 ```bash
 arc agent list
 arc agent show coach
-arc agent create --from ./coach.yaml
+arc agent create --name coach --model claude-sonnet-4-6 --workspace /workspace/fitness-coach
+arc agent create --from ./coach.yaml   # from existing YAML file
 arc agent edit coach
+arc agent clone coach coach-dev        # clone (clears discord channel_id)
 arc agent delete old-agent
 ```
 
@@ -248,7 +250,9 @@ jobs:
 
 ## Discord
 
-The bot responds when @mentioned in channels bound to agents. It creates a thread for each new conversation. The session persists via `acpx` named sessions so context is preserved across messages.
+The bot responds to messages in channels bound to agents. By default (`require_mention: false`) it replies to every message in the channel. Set `require_mention: true` on an agent to only respond when @mentioned.
+
+Responses are inline by default. Set `thread_mode: true` in config to have the bot create a thread for each new conversation. Discord threads use persistent named `acpx` sessions so context is preserved across messages.
 
 Commands in Discord:
 - `/model claude-haiku-4-5` - switch model for this channel
@@ -315,11 +319,9 @@ ruff check src/ tests/
 
 ## Implementation status
 
-- [x] Phase 1: Foundation (types, config, agents, dispatcher, CLI `arc ask`, tests)
-- [x] `arc tokens` - codeburn integration for per-agent token observability
-- [x] `arc status` - daemon state, agents, and cron next-run times in one command
-- [ ] Phase 2: Daemon + IPC
-- [ ] Phase 3: Discord
-- [ ] Phase 4: Cron
-- [ ] Phase 5: Setup + Migration
-- [ ] Phase 6: Polish
+- [x] Phase 1: Foundation (types, config, agents, dispatcher, `arc ask`, `arc status`, `arc tokens`)
+- [x] Phase 2: Daemon + IPC (Unix socket, `arc daemon` commands)
+- [x] Phase 3: Discord (bot, channel routing, rate limiting, `/model` command)
+- [x] Phase 4: Cron (APScheduler, `arc cron` commands, Discord notifications)
+- [x] Phase 5: Setup wizard, OpenClaw migration (`arc setup`, `arc import-openclaw`)
+- [x] Phase 6: Polish (`arc agent`, `arc log`, `arc config`, `arc cron` add/remove/edit/history, shell completions)
