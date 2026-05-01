@@ -1,12 +1,11 @@
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import yaml
 
 from arc.config import ArcConfig, DaemonConfig, GitConfig, LoggingConfig
 from arc.cron import CronManager, load_jobs, set_job_enabled
-from arc.types import CronJob
 
 
 @pytest.fixture
@@ -125,7 +124,9 @@ def test_cron_manager_schedules_enabled_jobs(cron_config: ArcConfig, jobs_file: 
 
     # daily-workout and heartbeat are enabled; weekly-plan is disabled
     assert mock_scheduler.add_job.call_count == 2
-    scheduled_ids = {call.kwargs.get("id") or call.args[2] for call in mock_scheduler.add_job.call_args_list}
+    scheduled_ids = {
+        call.kwargs.get("id") or call.args[2] for call in mock_scheduler.add_job.call_args_list
+    }
     assert "daily-workout" in scheduled_ids
     assert "heartbeat" in scheduled_ids
     assert "weekly-plan" not in scheduled_ids

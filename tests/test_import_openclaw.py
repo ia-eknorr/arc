@@ -12,7 +12,6 @@ from arc.import_openclaw import (
     import_from_path,
 )
 
-
 # --- helpers ---
 
 
@@ -133,9 +132,13 @@ def test_convert_agents(tmp_path: Path) -> None:
     (workspace / "IDENTITY.md").write_text("identity")
 
     config = {
-        "agents": {"list": [{"id": "coach", "name": "coach", "workspace": str(workspace), "model": "anthropic/claude-sonnet-4-6"}]},
+        "agents": {"list": [
+            {"id": "coach", "name": "coach", "workspace": str(workspace),
+             "model": "anthropic/claude-sonnet-4-6"},
+        ]},
         "bindings": [
-            {"type": "route", "agentId": "coach", "match": {"channel": "discord", "peer": {"kind": "channel", "id": "9999"}}}
+            {"type": "route", "agentId": "coach",
+             "match": {"channel": "discord", "peer": {"kind": "channel", "id": "9999"}}},
         ],
     }
     agents = convert_agents(config)
@@ -149,7 +152,10 @@ def test_convert_agents(tmp_path: Path) -> None:
 
 def test_convert_agents_no_channel(tmp_path: Path) -> None:
     config = {
-        "agents": {"list": [{"id": "trainer", "name": "trainer", "workspace": str(tmp_path), "model": "anthropic/claude-haiku-4-5"}]},
+        "agents": {"list": [
+            {"id": "trainer", "name": "trainer", "workspace": str(tmp_path),
+             "model": "anthropic/claude-haiku-4-5"},
+        ]},
         "bindings": [],
     }
     agents = convert_agents(config)
@@ -160,20 +166,29 @@ def test_convert_agents_no_channel(tmp_path: Path) -> None:
 
 
 def test_convert_cron_jobs_cron_schedule() -> None:
-    data = {"jobs": [{"id": "x", "agentId": "coach", "name": "weekly", "enabled": True, "schedule": {"kind": "cron", "expr": "0 20 * * 0"}, "payload": {"message": "Write plan."}}]}
+    data = {"jobs": [
+        {"id": "x", "agentId": "coach", "name": "weekly", "enabled": True,
+         "schedule": {"kind": "cron", "expr": "0 20 * * 0"}, "payload": {"message": "Write plan."}},
+    ]}
     result = convert_cron_jobs(data)
     assert result["jobs"]["weekly"]["schedule"] == "0 20 * * 0"
     assert result["jobs"]["weekly"]["prompt"] == "Write plan."
 
 
 def test_convert_cron_jobs_every_schedule() -> None:
-    data = {"jobs": [{"id": "x", "agentId": "trainer", "name": "heartbeat", "enabled": True, "schedule": {"kind": "every", "everyMs": 7200000}, "payload": {"message": "Scan."}}]}
+    data = {"jobs": [
+        {"id": "x", "agentId": "trainer", "name": "heartbeat", "enabled": True,
+         "schedule": {"kind": "every", "everyMs": 7200000}, "payload": {"message": "Scan."}},
+    ]}
     result = convert_cron_jobs(data)
     assert result["jobs"]["heartbeat"]["schedule"] == "*/120 * * * *"
 
 
 def test_convert_cron_jobs_disabled() -> None:
-    data = {"jobs": [{"id": "x", "agentId": "coach", "name": "paused", "enabled": False, "schedule": {"kind": "cron", "expr": "0 7 * * *"}, "payload": {"message": "hi"}}]}
+    data = {"jobs": [
+        {"id": "x", "agentId": "coach", "name": "paused", "enabled": False,
+         "schedule": {"kind": "cron", "expr": "0 7 * * *"}, "payload": {"message": "hi"}},
+    ]}
     result = convert_cron_jobs(data)
     assert result["jobs"]["paused"]["enabled"] is False
 

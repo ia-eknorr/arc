@@ -4,7 +4,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from arc.config import load_config
-from arc.dispatcher import DispatchError, _acpx_permission_flag, dispatch, dispatch_acpx, dispatch_ollama
+from arc.dispatcher import (
+    DispatchError,
+    _acpx_permission_flag,
+    dispatch,
+    dispatch_acpx,
+    dispatch_ollama,
+)
 from arc.types import AgentConfig
 
 
@@ -48,7 +54,7 @@ async def test_dispatch_model_override_allowed(config_dir: Path, coach: AgentCon
     with patch("arc.dispatcher.dispatch_acpx", new_callable=AsyncMock) as mock_acpx:
         from arc.types import DispatchResult
         mock_acpx.return_value = DispatchResult("ok", "claude-haiku-4-5", "acpx")
-        result = await dispatch("Q", coach, model_override="claude-haiku-4-5", config=cfg)
+        await dispatch("Q", coach, model_override="claude-haiku-4-5", config=cfg)
     called_model = mock_acpx.call_args[0][2]
     assert called_model == "claude-haiku-4-5"
 

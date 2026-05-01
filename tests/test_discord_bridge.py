@@ -1,13 +1,10 @@
-import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
-import pytest
 
 from arc.config import ArcConfig, DiscordConfig, DiscordRateLimit
 from arc.discord_bridge import ArcDiscordBot, _RateLimiter
-
 
 # --- helpers ---
 
@@ -143,7 +140,9 @@ async def test_ignores_no_agent_for_channel(config_dir: Path) -> None:
     daemon.handle_request.assert_not_awaited()
 
 
-async def test_ignores_not_mentioned_when_require_mention(config_dir: Path, coach_agent_yaml: dict) -> None:
+async def test_ignores_not_mentioned_when_require_mention(
+    config_dir: Path, coach_agent_yaml: dict
+) -> None:
     bot, daemon = _make_bot()
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
@@ -154,7 +153,9 @@ async def test_ignores_not_mentioned_when_require_mention(config_dir: Path, coac
     daemon.handle_request.assert_not_awaited()
 
 
-async def test_responds_without_mention_by_default(config_dir: Path, coach_agent_yaml: dict) -> None:
+async def test_responds_without_mention_by_default(
+    config_dir: Path, coach_agent_yaml: dict
+) -> None:
     bot, daemon = _make_bot(_make_config(thread_mode=False))
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
@@ -192,7 +193,10 @@ async def test_dispatches_in_existing_thread(config_dir: Path, coach_agent_yaml:
         bot.user, "follow-up", channel_id="8888", is_thread=True, parent_channel_id="9999"
     )
 
-    with patch("arc.discord_bridge.resolve_agent_for_channel", side_effect=lambda cid, _: agent if cid == "9999" else None):
+    with patch(
+        "arc.discord_bridge.resolve_agent_for_channel",
+        side_effect=lambda cid, _: agent if cid == "9999" else None,
+    ):
         await bot.on_message(msg)
 
     msg.create_thread.assert_not_awaited()

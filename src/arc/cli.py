@@ -80,7 +80,9 @@ def ask(
     agent: Annotated[str | None, typer.Option("--agent", "-a", help="Agent name.")] = None,
     model: Annotated[
         str | None,
-        typer.Option("--model", "-m", help="Override model (e.g. claude-haiku-4-5, ollama/qwen3:8b)."),
+        typer.Option(
+            "--model", "-m", help="Override model (e.g. claude-haiku-4-5, ollama/qwen3:8b)."
+        ),
     ] = None,
     pretty: Annotated[bool, typer.Option("--pretty", help="Show dispatch info header.")] = False,
     config_dir: Annotated[
@@ -388,7 +390,8 @@ def cron_next(
             continue
         trigger = CronTrigger.from_crontab(job.schedule)
         next_run = trigger.get_next_fire_time(None, now)
-        typer.echo(f"{job.name:<20} {next_run.astimezone().strftime('%Y-%m-%d %H:%M %Z') if next_run else 'unknown'}")
+        formatted = next_run.astimezone().strftime("%Y-%m-%d %H:%M %Z") if next_run else "unknown"
+        typer.echo(f"{job.name:<20} {formatted}")
 
 
 @cron_app.command("enable")
@@ -720,10 +723,14 @@ def import_openclaw_cmd(
 @cron_app.command("add")
 def cron_add(
     name: Annotated[str, typer.Option("--name", "-n", help="Job name.")] = "",
-    schedule: Annotated[str, typer.Option("--schedule", "-s", help="Cron schedule expression.")] = "",
+    schedule: Annotated[
+        str, typer.Option("--schedule", "-s", help="Cron schedule expression.")
+    ] = "",
     agent: Annotated[str, typer.Option("--agent", "-a", help="Agent name.")] = "",
     prompt: Annotated[str, typer.Option("--prompt", "-p", help="Prompt to send.")] = "",
-    notify: Annotated[str, typer.Option("--notify", help="Notification mode: discord, discord_on_urgent.")] = "",
+    notify: Annotated[
+        str, typer.Option("--notify", help="Notification mode: discord, discord_on_urgent.")
+    ] = "",
     model: Annotated[str | None, typer.Option("--model", "-m", help="Model override.")] = None,
     config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
 ) -> None:
@@ -879,7 +886,9 @@ def agent_show(
 
 @agent_app.command("create")
 def agent_create(
-    from_file: Annotated[Path | None, typer.Option("--from", help="Copy from existing YAML file.")] = None,
+    from_file: Annotated[
+        Path | None, typer.Option("--from", help="Copy from existing YAML file.")
+    ] = None,
     name: Annotated[str, typer.Option("--name", "-n")] = "",
     workspace: Annotated[str, typer.Option("--workspace", "-w")] = "",
     model: Annotated[str, typer.Option("--model", "-m")] = "",

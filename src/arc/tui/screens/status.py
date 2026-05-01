@@ -1,13 +1,12 @@
 """Status screen: daemon state, agents, and cron at a glance."""
 from __future__ import annotations
 
-import asyncio
 import subprocess
 from datetime import datetime, timezone
 
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
 
@@ -31,6 +30,7 @@ def _relative_time(iso: str) -> str:
 
 def _next_fire_offline(schedule: str) -> str | None:
     from apscheduler.triggers.cron import CronTrigger
+
     try:
         trigger = CronTrigger.from_crontab(schedule)
         nrt = trigger.get_next_fire_time(None, datetime.now(timezone.utc))
@@ -42,11 +42,11 @@ def _next_fire_offline(schedule: str) -> str | None:
 async def _fetch_status(cfg) -> dict:
     """Try daemon IPC first; fall back to config files."""
     from arc import ipc as _ipc
+
     response = await _ipc.request(cfg, {"op": "status", "source": "tui"})
     if response and response.get("status") == "ok":
         return {"daemon_running": True, **response}
 
-    # Offline fallback
     from arc.agents import list_agents
     from arc.cron import load_jobs
 
@@ -83,25 +83,36 @@ class StatusPane(Widget):
         Binding("s", "toggle_daemon", "Start/Stop"),
     ]
 
-    _data: reactive[dict] = reactive({})
+    DEFAULT_CSS = """
+    StatusPane {
+        height: 1fr;
+        padding: 1 2;
+    }
+    #status-content {
+        height: auto;
+    }
+    """
 
     def compose(self) -> ComposeResult:
         yield Static("Loading...", id="status-content")
 
     def on_mount(self) -> None:
-        self.set_interval(5, self._load)
-        self._load()
+        self.set_interval(5, self._load_status)
+        self._load_status()
 
-    def _load(self) -> None:
-        asyncio.create_task(self._fetch())
+    def action_refresh(self) -> None:
+        self._load_status()
 
-    async def _fetch(self) -> None:
-        cfg = load_config()
-        data = await _fetch_status(cfg)
-        self._data = data
-        self._render(data)
+    @work(exclusive=True)
+    async def _load_status(self) -> None:
+        try:
+            cfg = load_config()
+            data = await _fetch_status(cfg)
+            self._show(data)
+        except Exception as e:
+            self.query_one("#status-content", Static).update(f"[red]Error: {e}[/red]")
 
-    def _render(self, data: dict) -> None:
+    def _show(self, data: dict) -> None:
         lines: list[str] = []
 
         if data.get("daemon_running"):
@@ -110,7 +121,10 @@ class StatusPane(Widget):
             sock = d.get("socket", "?")
             lines.append(f"[green]daemon[/green]   running  pid={pid}  socket={sock}")
         else:
-            lines.append("[red]daemon[/red]   not running  (press [bold]s[/bold] to start)")
+            lines.append(
+                "[yellow]daemon[/yellow]   not running  "
+                "([bold]s[/bold]: start  [bold]r[/bold]: refresh)"
+            )
 
         agents = data.get("agents", [])
         if agents:
@@ -118,10 +132,14 @@ class StatusPane(Widget):
             lines.append("[bold]AGENTS[/bold]")
             col = max(len(a["name"]) for a in agents)
             for a in agents:
-                ch = f"  discord {a['discord_channel']}" if a.get("discord_channel") else ""
-                lines.append(f"  {a['name']:<{col}}  {a['model']}  {a['workspace']}{ch}")
+                ch = f"  discord={a['discord_channel']}" if a.get("discord_channel") else ""
+                lines.append(
+                    f"  [cyan]{a['name']:<{col}}[/cyan]"
+                    f"  {a['model']:<30}  {a['workspace']}{ch}"
+                )
         else:
-            lines.append("\n[dim]no agents configured[/dim]")
+            lines.append("")
+            lines.append("[dim]no agents configured -- run arc setup[/dim]")
 
         cron = data.get("cron", [])
         if cron:
@@ -131,31 +149,37 @@ class StatusPane(Widget):
             for j in cron:
                 if not j["enabled"]:
                     nxt = "--"
+                    state = "[dim]disabled[/dim]"
                 elif j.get("next_run"):
                     nxt = _relative_time(j["next_run"])
+                    state = "[green]enabled[/green]"
                 else:
                     nxt = "unknown"
-                status = "enabled" if j["enabled"] else "[dim]disabled[/dim]"
-                lines.append(f"  {j['name']:<{col}}  next: {nxt:<14}  {status}")
+                    state = "[green]enabled[/green]"
+                lines.append(
+                    f"  [cyan]{j['name']:<{col}}[/cyan]"
+                    f"  next: {nxt:<15}  {state}"
+                )
+        else:
+            lines.append("")
+            lines.append("[dim]no cron jobs configured[/dim]")
 
+        lines.append("")
+        lines.append("[dim]tab: next screen  s: start/stop daemon  r: refresh[/dim]")
         self.query_one("#status-content", Static).update("\n".join(lines))
 
-    def action_refresh(self) -> None:
-        """Manual refresh."""
-        self._load()
-
     def action_toggle_daemon(self) -> None:
-        """Start or stop the daemon depending on current state."""
+        import shutil
+        import sys
+
         cfg = load_config()
         pid = read_pid(cfg.daemon.pid_file)
         running = pid is not None and is_process_running(pid)
-
-        import shutil
-        import sys
         arc_bin = shutil.which("arc") or sys.argv[0]
 
         if running:
             subprocess.Popen([arc_bin, "daemon", "stop"])
+            self.notify("Stopping daemon...")
         else:
             subprocess.Popen(
                 [arc_bin, "daemon", "start", "--foreground"],
@@ -163,5 +187,5 @@ class StatusPane(Widget):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        # Refresh after a short delay to let daemon start/stop
-        self.set_timer(1.5, self._load)
+            self.notify("Starting daemon...")
+        self.set_timer(1.5, self._load_status)

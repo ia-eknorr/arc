@@ -45,7 +45,9 @@ def test_list_agents_missing_dir(tmp_path: Path) -> None:
     assert agents == []
 
 
-async def test_build_system_prompt(workspace: Path, coach_agent_yaml: dict, config_dir: Path) -> None:
+async def test_build_system_prompt(
+    workspace: Path, coach_agent_yaml: dict, config_dir: Path
+) -> None:
     agent = load_agent("coach", config_dir)
     prompt = await build_system_prompt(agent)
     assert "# AGENTS.md" in prompt

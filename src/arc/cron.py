@@ -1,7 +1,7 @@
 """Cron job scheduling for arc daemon."""
 import logging
 from pathlib import Path
-from typing import Callable, Awaitable
+from typing import Awaitable, Callable
 
 import yaml
 from apscheduler.schedulers.asyncio import AsyncIOScheduler

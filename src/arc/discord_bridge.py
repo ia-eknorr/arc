@@ -1,5 +1,4 @@
 """Discord bot bridge for arc daemon."""
-import asyncio
 import collections
 import logging
 import time

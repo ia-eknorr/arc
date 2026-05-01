@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-import yaml
 
 from arc.config import ArcConfig, create_default_config, load_config
 

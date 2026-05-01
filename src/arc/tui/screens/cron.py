@@ -12,11 +12,12 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.widget import Widget
-from textual.widgets import Label, ListItem, ListView, Static
+from textual.widgets import Label, ListItem, Static
 
 from arc.config import load_config
 from arc.cron import load_jobs
 from arc.tui.screens.agents import ConfirmScreen, InputScreen
+from arc.tui.widgets.vim_list import VimListView
 from arc.types import CronJob
 
 
@@ -40,6 +41,7 @@ def _save_jobs_raw(data: dict) -> None:
 
 def _next_fire_str(schedule: str) -> str:
     from apscheduler.triggers.cron import CronTrigger
+
     try:
         trigger = CronTrigger.from_crontab(schedule)
         nrt = trigger.get_next_fire_time(None, datetime.now(timezone.utc))
@@ -61,25 +63,29 @@ class CronDetail(Static):
 
     def show(self, job: CronJob) -> None:
         next_str = _next_fire_str(job.schedule) if job.enabled else "--"
-        lines = [f"[bold]{job.name}[/bold]", ""]
+        lines = [f"[bold cyan]{job.name}[/bold cyan]", ""]
         if job.description:
             lines.append(f"  {job.description}")
             lines.append("")
-        lines.append(f"  schedule:  {job.schedule}")
-        lines.append(f"  agent:     {job.agent}")
+        lines.append(f"  [dim]schedule:[/dim]   {job.schedule}")
+        lines.append(f"  [dim]agent:[/dim]      {job.agent}")
         if job.model:
-            lines.append(f"  model:     {job.model}")
+            lines.append(f"  [dim]model:[/dim]      {job.model}")
         else:
-            lines.append("  model:     (agent default)")
+            lines.append("  [dim]model:[/dim]      (agent default)")
         if job.notify:
-            lines.append(f"  notify:    {job.notify}")
-        lines.append(f"  next run:  {next_str}")
+            lines.append(f"  [dim]notify:[/dim]     {job.notify}")
+        lines.append(f"  [dim]next run:[/dim]   {next_str}")
+        lines.append(f"  [dim]enabled:[/dim]    {'yes' if job.enabled else 'no'}")
         lines.append("")
-        lines.append("  prompt:")
+        lines.append("  [dim]prompt:[/dim]")
         for line in job.prompt.splitlines():
             lines.append(f"    {line}")
         lines.append("")
-        lines.append("[dim]space: toggle  r: run now  e: open in editor  d: delete[/dim]")
+        lines.append(
+            "[dim]space: toggle  r: run now  e: editor  "
+            "d: delete  h: back to list[/dim]"
+        )
         self.update("\n".join(lines))
 
 
@@ -92,30 +98,42 @@ class CronPane(Widget):
         Binding("e", "edit_in_editor", "Editor"),
         Binding("n", "new_job", "New"),
         Binding("d", "delete_job", "Delete"),
+        Binding("l", "focus_detail", "Detail", show=False),
+        Binding("h", "focus_list", "List", show=False),
+        Binding("enter", "focus_detail", "Detail", show=False),
     ]
 
     DEFAULT_CSS = """
     CronPane {
         height: 1fr;
     }
+    #cron-split {
+        height: 1fr;
+    }
     #cron-list-pane {
-        width: 40;
+        width: 36;
         border-right: solid $accent;
+    }
+    #cron-list-label {
+        padding: 0 1;
+        background: $surface;
+        color: $accent;
+        text-style: bold;
     }
     #cron-detail-pane {
         width: 1fr;
         padding: 1 2;
     }
-    #cron-list {
+    VimListView {
         height: 1fr;
     }
     """
 
     def compose(self) -> ComposeResult:
-        with Horizontal():
+        with Horizontal(id="cron-split"):
             with Vertical(id="cron-list-pane"):
-                yield Label("[bold]CRON JOBS[/bold]", classes="section-title")
-                yield ListView(id="cron-list")
+                yield Label(" CRON JOBS  j/k: nav  space: toggle", id="cron-list-label")
+                yield VimListView(id="cron-list")
             with ScrollableContainer(id="cron-detail-pane"):
                 yield CronDetail(id="cron-detail")
 
@@ -125,16 +143,20 @@ class CronPane(Widget):
     def _refresh_list(self) -> None:
         cfg = load_config()
         self._jobs = load_jobs(cfg)
-        lv = self.query_one("#cron-list", ListView)
+        lv = self.query_one("#cron-list", VimListView)
         lv.clear()
         for job in self._jobs:
-            status = "on" if job.enabled else "[dim]off[/dim]"
-            lv.append(ListItem(Label(f"{job.name}  [{status}]")))
+            marker = "[green]on[/green]" if job.enabled else "[dim]off[/dim]"
+            lv.append(ListItem(Label(f"{job.name}  {marker}")))
         if self._jobs:
             self._show_detail(self._jobs[0])
+        else:
+            self.query_one("#cron-detail", CronDetail).update(
+                "[dim]No cron jobs configured.\n\nn: add a job[/dim]"
+            )
 
     def _selected_job(self) -> CronJob | None:
-        lv = self.query_one("#cron-list", ListView)
+        lv = self.query_one("#cron-list", VimListView)
         idx = lv.index
         if idx is None or not self._jobs or idx >= len(self._jobs):
             return None
@@ -143,10 +165,16 @@ class CronPane(Widget):
     def _show_detail(self, job: CronJob) -> None:
         self.query_one("#cron-detail", CronDetail).show(job)
 
-    def on_list_view_selected(self, event: ListView.Selected) -> None:
+    def on_list_view_highlighted(self, event: VimListView.Highlighted) -> None:
         job = self._selected_job()
         if job:
             self._show_detail(job)
+
+    def action_focus_detail(self) -> None:
+        self.query_one("#cron-detail-pane").focus()
+
+    def action_focus_list(self) -> None:
+        self.query_one("#cron-list", VimListView).focus()
 
     def action_toggle_job(self) -> None:
         job = self._selected_job()
@@ -155,9 +183,10 @@ class CronPane(Widget):
         raw = _load_jobs_raw()
         jobs = raw.get("jobs") or {}
         if job.name in jobs:
-            jobs[job.name]["enabled"] = not job.enabled
+            new_enabled = not job.enabled
+            jobs[job.name]["enabled"] = new_enabled
             _save_jobs_raw(raw)
-            state = "enabled" if not job.enabled else "disabled"
+            state = "enabled" if new_enabled else "disabled"
             self.notify(f"'{job.name}' {state}. Restart daemon to apply.")
         self._refresh_list()
 
@@ -168,6 +197,7 @@ class CronPane(Widget):
 
         async def _do() -> None:
             from arc import ipc as _ipc
+
             cfg = load_config()
             self.notify(f"Running '{job.name}'...")
             response = await _ipc.request(cfg, {"op": "cron_run", "job": job.name})
@@ -195,7 +225,9 @@ class CronPane(Widget):
             name = await self.app.push_screen_wait(InputScreen("Job name:", ""))
             if not name:
                 return
-            schedule = await self.app.push_screen_wait(InputScreen("Schedule (cron):", "0 9 * * *"))
+            schedule = await self.app.push_screen_wait(
+                InputScreen("Schedule (cron):", "0 9 * * *")
+            )
             if not schedule:
                 return
             agent = await self.app.push_screen_wait(InputScreen("Agent:", ""))

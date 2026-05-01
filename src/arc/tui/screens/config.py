@@ -9,18 +9,13 @@ import yaml
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.widget import Widget
-from textual.widgets import Label, ListItem, ListView, Static
+from textual.widgets import Label, ListItem, Static
 
 from arc.config import load_config
 from arc.tui.screens.agents import InputScreen
+from arc.tui.widgets.vim_list import VimListView
 
-# Fields that affect the daemon process and require a restart on change.
 _RESTART_REQUIRED = {"daemon.socket_path", "daemon.pid_file", "daemon.log_level"}
-
-# Fields that are boolean toggles.
-_BOOL_FIELDS = {"daemon.auto_start", "discord.enabled"}
-
-# Log level choices for cycling.
 _LOG_LEVELS = ["debug", "info", "warning", "error"]
 
 
@@ -61,51 +56,53 @@ def _set_nested(data: dict, key: str, value) -> None:
 class ConfigRow:
     """Represents one editable config row."""
 
-    def __init__(self, label: str, key: str, kind: str = "str", hint: str = "") -> None:
+    def __init__(
+        self, label: str, key: str, kind: str = "str", hint: str = ""
+    ) -> None:
         self.label = label
         self.key = key
-        self.kind = kind  # "bool", "int", "str", "loglevel", "readonly"
+        self.kind = kind
         self.hint = hint
 
 
-# Ordered list of displayed config rows.
 ROWS: list[ConfigRow] = [
     ConfigRow("DAEMON", "", "section"),
-    ConfigRow("  auto_start", "daemon.auto_start", "bool", "toggle with space/enter"),
-    ConfigRow("  log_level", "daemon.log_level", "loglevel", "debug/info/warning/error"),
+    ConfigRow("  auto_start", "daemon.auto_start", "bool", "space/enter: toggle"),
+    ConfigRow("  log_level", "daemon.log_level", "loglevel", "enter: cycle"),
     ConfigRow("  socket_path", "daemon.socket_path", "readonly"),
     ConfigRow("  pid_file", "daemon.pid_file", "readonly"),
     ConfigRow("TIMEOUTS", "", "section"),
     ConfigRow("  acpx_request", "timeouts.acpx_request", "int", "seconds"),
     ConfigRow("  ollama_request", "timeouts.ollama_request", "int", "seconds"),
     ConfigRow("DISCORD", "", "section"),
-    ConfigRow("  enabled", "discord.enabled", "bool", "toggle with space/enter"),
+    ConfigRow("  enabled", "discord.enabled", "bool", "space/enter: toggle"),
     ConfigRow("  guild_id", "discord.guild_id", "str"),
     ConfigRow("GIT", "", "section"),
-    ConfigRow("  auto_pull", "git.auto_pull", "bool", "toggle with space/enter"),
+    ConfigRow("  auto_pull", "git.auto_pull", "bool", "space/enter: toggle"),
 ]
 
 
 def _build_lines(data: dict) -> list[tuple[str, ConfigRow | None]]:
-    """Build display lines paired with their config row (or None for section headers)."""
     lines = []
     for row in ROWS:
         if row.kind == "section":
-            lines.append((f"\n[bold]{row.label}[/bold]", None))
+            lines.append((f"[bold]{row.label}[/bold]", None))
             continue
         val = _get_nested(data, row.key)
         if val is None:
             val = ""
         hint = f"  [dim]{row.hint}[/dim]" if row.hint else ""
         if row.kind == "bool":
-            display = "[green]true[/green]" if val else "[red]false[/red]"
+            display = "[green]true [/green]" if val else "[red]false[/red]"
         elif row.kind == "readonly":
             display = f"[dim]{val}[/dim]"
         else:
             display = str(val)
         restart = row.key in _RESTART_REQUIRED and val
-        needs_restart = " [yellow]*restart required*[/yellow]" if restart else ""
-        lines.append((f"  {row.label:<22}  {display}{hint}{needs_restart}", row))
+        restart_warn = " [yellow]*restart required*[/yellow]" if restart else ""
+        lines.append(
+            (f"  {row.label:<22}  {display}{hint}{restart_warn}", row)
+        )
     return lines
 
 
@@ -116,26 +113,37 @@ class ConfigPane(Widget):
         Binding("e", "edit_full", "Edit file"),
         Binding("enter", "edit_field", "Edit"),
         Binding("space", "toggle_field", "Toggle"),
+        Binding("j", "cursor_down", "Down", show=False),
+        Binding("k", "cursor_up", "Up", show=False),
     ]
 
     DEFAULT_CSS = """
     ConfigPane {
         height: 1fr;
+        padding: 0;
+    }
+    #config-header {
+        padding: 0 1;
+        background: $surface;
+        color: $accent;
+        text-style: bold;
     }
     #config-list {
         height: 1fr;
     }
     #config-hint {
-        height: 3;
+        height: 1;
         padding: 0 2;
         color: $text-muted;
     }
     """
 
     def compose(self) -> ComposeResult:
-        yield Label("[bold]CONFIG[/bold]  [dim](e: edit full file  enter/space: edit field)[/dim]",
-                    classes="section-title")
-        yield ListView(id="config-list")
+        yield Label(
+            " CONFIG  j/k: nav  enter/space: edit  e: full file",
+            id="config-header",
+        )
+        yield VimListView(id="config-list")
         yield Static("", id="config-hint")
 
     def on_mount(self) -> None:
@@ -145,27 +153,38 @@ class ConfigPane(Widget):
         data = _load_config_raw()
         self._data = data
         self._lines = _build_lines(data)
-        lv = self.query_one("#config-list", ListView)
+        lv = self.query_one("#config-list", VimListView)
         lv.clear()
-        for text, row in self._lines:
+        for text, _row in self._lines:
             lv.append(ListItem(Static(text)))
 
     def _selected_row(self) -> ConfigRow | None:
-        lv = self.query_one("#config-list", ListView)
+        lv = self.query_one("#config-list", VimListView)
         idx = lv.index
         if idx is None or idx >= len(self._lines):
             return None
         _, row = self._lines[idx]
         return row
 
-    def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+    def on_list_view_highlighted(self, event: VimListView.Highlighted) -> None:
         row = self._selected_row()
         if row and row.kind not in ("section", "readonly"):
-            self.query_one("#config-hint", Static).update(
-                f"  key: {row.key}  |  enter: edit  space: toggle (bool)"
-            )
+            hint = f"  key: {row.key}"
+            if row.kind == "bool":
+                hint += "  |  space/enter: toggle"
+            elif row.kind == "loglevel":
+                hint += "  |  enter: cycle levels"
+            else:
+                hint += "  |  enter: edit value"
+            self.query_one("#config-hint", Static).update(hint)
         else:
             self.query_one("#config-hint", Static).update("")
+
+    def action_cursor_down(self) -> None:
+        self.query_one("#config-list", VimListView).action_cursor_down()
+
+    def action_cursor_up(self) -> None:
+        self.query_one("#config-list", VimListView).action_cursor_up()
 
     def action_edit_full(self) -> None:
         path = _config_path()
@@ -200,7 +219,6 @@ class ConfigPane(Widget):
         current = str(_get_nested(data, row.key) or "")
 
         if row.kind == "loglevel":
-            # Cycle through log levels
             try:
                 idx = _LOG_LEVELS.index(current)
                 new_val = _LOG_LEVELS[(idx + 1) % len(_LOG_LEVELS)]
@@ -213,7 +231,9 @@ class ConfigPane(Widget):
             return
 
         async def _do() -> None:
-            new_str = await self.app.push_screen_wait(InputScreen(f"Set {row.key}:", current))
+            new_str = await self.app.push_screen_wait(
+                InputScreen(f"Set {row.key}:", current)
+            )
             if new_str is None:
                 return
             if row.kind == "int":
@@ -227,10 +247,13 @@ class ConfigPane(Widget):
             _set_nested(data, row.key, new_val)
             _save_config_raw(data)
             if row.key in _RESTART_REQUIRED:
-                self.notify(f"{row.key} updated. Daemon restart required.", severity="warning")
+                self.notify(
+                    f"{row.key} updated. Daemon restart required.", severity="warning"
+                )
             else:
                 self.notify(f"{row.key} = {new_val}")
             self._refresh()
 
         import asyncio
+
         asyncio.create_task(_do())

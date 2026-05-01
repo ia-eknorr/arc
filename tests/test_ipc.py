@@ -1,7 +1,5 @@
 import asyncio
 
-import pytest
-
 from arc.ipc import recv_message, send_message
 
 
