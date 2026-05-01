@@ -561,6 +561,10 @@ def tokens_cmd(
         str,
         typer.Option("--cmd", help="codeburn subcommand: status, report, today, month."),
     ] = "status",
+    all_workspaces: Annotated[
+        bool,
+        typer.Option("--all", help="Show global spend across all projects (bypasses agent scoping)."),
+    ] = False,
     config_dir: Annotated[
         Path | None, typer.Option("--config-dir", hidden=True)
     ] = None,
@@ -578,24 +582,25 @@ def tokens_cmd(
 
     cmd = cb + [subcommand, "--provider", "claude"]
 
-    if agent:
-        try:
-            agent_cfg = load_agent(agent, config_dir)
-        except FileNotFoundError as e:
-            typer.echo(f"Error: {e}", err=True)
-            raise typer.Exit(1) from e
-        project_name = Path(agent_cfg.workspace).name
-        cmd += ["--project", project_name]
-        typer.echo(f"[agent: {agent_cfg.name}  workspace: {agent_cfg.workspace}]\n")
-    else:
-        agents = list_agents(config_dir)
-        if agents:
-            col = max(len(a.name) for a in agents)
-            typer.echo("Configured agents:")
-            for a in agents:
-                typer.echo(f"  {a.name:<{col}}  {a.workspace}")
-                cmd += ["--project", Path(a.workspace).name]
-            typer.echo()
+    if not all_workspaces:
+        if agent:
+            try:
+                agent_cfg = load_agent(agent, config_dir)
+            except FileNotFoundError as e:
+                typer.echo(f"Error: {e}", err=True)
+                raise typer.Exit(1) from e
+            project_name = Path(agent_cfg.workspace).name
+            cmd += ["--project", project_name]
+            typer.echo(f"[agent: {agent_cfg.name}  workspace: {agent_cfg.workspace}]\n")
+        else:
+            agents = list_agents(config_dir)
+            if agents:
+                col = max(len(a.name) for a in agents)
+                typer.echo("Configured agents:")
+                for a in agents:
+                    typer.echo(f"  {a.name:<{col}}  {a.workspace}")
+                    cmd += ["--project", Path(a.workspace).name]
+                typer.echo()
 
     if subcommand == "status":
         cmd += ["--period", period]
@@ -1051,17 +1056,51 @@ def log_cron(
 
 @log_app.command("tail")
 def log_tail(
+    agent: Annotated[
+        str | None,
+        typer.Option("--agent", "-a", help="Filter routing log to a specific agent."),
+    ] = None,
     config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
 ) -> None:
-    """Tail the daemon log file (requires log_file configured)."""
+    """Tail routing and cron logs. Use --agent to filter to a single agent."""
+    import json
+    import time
+
     log_dir = _logs_dir(config_dir)
     routing = log_dir / "routing.jsonl"
     cron = log_dir / "cron.jsonl"
-    files = [str(f) for f in (routing, cron) if f.exists()]
-    if not files:
-        typer.echo("No log files found yet.")
+
+    if not agent:
+        files = [str(f) for f in (routing, cron) if f.exists()]
+        if not files:
+            typer.echo("No log files found yet.")
+            return
+        subprocess.run(["tail", "-f"] + files)
         return
-    subprocess.run(["tail", "-f"] + files)
+
+    if not routing.exists():
+        typer.echo("No routing log found yet.")
+        return
+
+    with routing.open() as fh:
+        fh.seek(0, 2)
+        try:
+            while True:
+                line = fh.readline()
+                if not line:
+                    time.sleep(0.25)
+                    continue
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if entry.get("agent") == agent:
+                    typer.echo(line)
+        except KeyboardInterrupt:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -1147,6 +1186,62 @@ def config_set(
 # ---------------------------------------------------------------------------
 # arc version
 # ---------------------------------------------------------------------------
+
+
+@app.command("ping")
+def ping_cmd(
+    config_dir: Annotated[Path | None, typer.Option("--config-dir", hidden=True)] = None,
+) -> None:
+    """Check reachability of daemon, acpx, and Ollama backends."""
+    import httpx
+
+    cfg = load_config(config_dir)
+    ok = True
+
+    # daemon
+    async def _check_daemon() -> bool:
+        from arc import ipc as _ipc
+        conn = await _ipc.connect(cfg)
+        if conn:
+            conn[1].close()
+            return True
+        return False
+
+    daemon_ok = asyncio.run(_check_daemon())
+    status = "ok  " if daemon_ok else "fail"
+    if not daemon_ok:
+        ok = False
+    typer.echo(f"daemon    {status}  {cfg.daemon.socket_path}")
+
+    # acpx
+    acpx_path = shutil.which("acpx")
+    if acpx_path:
+        result = subprocess.run(
+            ["acpx", "--help"], capture_output=True, timeout=5
+        )
+        acpx_ok = result.returncode == 0
+    else:
+        acpx_ok = False
+    status = "ok  " if acpx_ok else "fail"
+    if not acpx_ok:
+        ok = False
+    detail = acpx_path or "not found"
+    typer.echo(f"acpx      {status}  {detail}")
+
+    # ollama endpoints
+    for name, ep in cfg.ollama.endpoints.items():
+        base = ep.url.rstrip("/v1").rstrip("/")
+        try:
+            r = httpx.get(base, timeout=3.0)
+            ep_ok = r.status_code == 200
+        except Exception:
+            ep_ok = False
+        status = "ok  " if ep_ok else "fail"
+        if not ep_ok:
+            ok = False
+        typer.echo(f"ollama    {status}  {name} @ {ep.url}")
+
+    raise typer.Exit(0 if ok else 1)
 
 
 @app.command("version")
