@@ -49,7 +49,7 @@ async def test_handle_request_unknown_agent(daemon: ArcDaemon) -> None:
 async def test_handle_request_success(
     daemon: ArcDaemon, config_dir: Path, coach_agent_yaml: dict, workspace: Path
 ) -> None:
-    result = DispatchResult("Coach response", "claude-sonnet-4-6", "acpx")
+    result = DispatchResult("Coach response", "sonnet", "acpx")
     with patch("arc.daemon.load_agent") as mock_load, \
          patch("arc.daemon.dispatch", new_callable=AsyncMock) as mock_dispatch:
         mock_load.return_value = coach_agent_yaml  # any truthy value
@@ -72,7 +72,7 @@ async def test_handle_request_cli_is_one_shot(
 
     with patch("arc.daemon.load_agent", side_effect=lambda n, _: real_load(n, config_dir)), \
          patch("arc.daemon.dispatch", new_callable=AsyncMock) as mock_dispatch:
-        mock_dispatch.return_value = DispatchResult("ok", "claude-sonnet-4-6", "acpx")
+        mock_dispatch.return_value = DispatchResult("ok", "sonnet", "acpx")
         await daemon.handle_request({"prompt": "hi", "agent": "coach", "source": "cli"})
 
     _, kwargs = mock_dispatch.call_args
@@ -87,7 +87,7 @@ async def test_handle_request_discord_uses_session(
 
     with patch("arc.daemon.load_agent", side_effect=lambda n, _: real_load(n, config_dir)), \
          patch("arc.daemon.dispatch", new_callable=AsyncMock) as mock_dispatch:
-        mock_dispatch.return_value = DispatchResult("ok", "claude-sonnet-4-6", "acpx")
+        mock_dispatch.return_value = DispatchResult("ok", "sonnet", "acpx")
         await daemon.handle_request({
             "prompt": "hi",
             "agent": "coach",
@@ -154,12 +154,12 @@ async def test_handle_status_does_not_require_agent(daemon: ArcDaemon) -> None:
 
 
 def test_set_model_override(daemon: ArcDaemon) -> None:
-    daemon.set_model_override("chan-1", "claude-haiku-4-5")
-    assert daemon.model_overrides["chan-1"] == "claude-haiku-4-5"
+    daemon.set_model_override("chan-1", "haiku")
+    assert daemon.model_overrides["chan-1"] == "haiku"
 
 
 def test_clear_model_override(daemon: ArcDaemon) -> None:
-    daemon.set_model_override("chan-1", "claude-haiku-4-5")
+    daemon.set_model_override("chan-1", "haiku")
     daemon.set_model_override("chan-1", None)
     assert "chan-1" not in daemon.model_overrides
 
@@ -169,11 +169,11 @@ async def test_model_override_applied_to_discord_request(
 ) -> None:
     from arc.agents import load_agent as real_load
 
-    daemon.set_model_override("chan-99", "claude-haiku-4-5")
+    daemon.set_model_override("chan-99", "haiku")
 
     with patch("arc.daemon.load_agent", side_effect=lambda n, _: real_load(n, config_dir)), \
          patch("arc.daemon.dispatch", new_callable=AsyncMock) as mock_dispatch:
-        mock_dispatch.return_value = DispatchResult("ok", "claude-haiku-4-5", "acpx")
+        mock_dispatch.return_value = DispatchResult("ok", "haiku", "acpx")
         await daemon.handle_request({
             "prompt": "hi",
             "agent": "coach",
@@ -183,7 +183,7 @@ async def test_model_override_applied_to_discord_request(
         })
 
     _, kwargs = mock_dispatch.call_args
-    assert kwargs.get("model_override") == "claude-haiku-4-5"
+    assert kwargs.get("model_override") == "haiku"
 
 
 # --- cron ---

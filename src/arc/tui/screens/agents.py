@@ -342,7 +342,7 @@ class AgentsPane(Widget):
             if not workspace:
                 return
             model = await self.app.push_screen_wait(
-                InputScreen("Model:", "claude-sonnet-4-6")
+                InputScreen("Model:", "sonnet")
             )
             if not model:
                 return

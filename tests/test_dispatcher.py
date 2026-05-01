@@ -29,11 +29,11 @@ def trainer(config_dir: Path, workspace: Path, trainer_agent_yaml: dict) -> Agen
 # --- Model routing ---
 
 
-async def test_dispatch_routes_claude(config_dir: Path, coach: AgentConfig) -> None:
+async def test_dispatch_routes_acpx(config_dir: Path, coach: AgentConfig) -> None:
     cfg = load_config(config_dir)
     with patch("arc.dispatcher.dispatch_acpx", new_callable=AsyncMock) as mock_acpx:
         from arc.types import DispatchResult
-        mock_acpx.return_value = DispatchResult("hello", "claude-sonnet-4-6", "acpx")
+        mock_acpx.return_value = DispatchResult("hello", "sonnet", "acpx")
         result = await dispatch("Hello", coach, config=cfg)
     mock_acpx.assert_awaited_once()
     assert result.dispatch_type == "acpx"
@@ -53,23 +53,16 @@ async def test_dispatch_model_override_allowed(config_dir: Path, coach: AgentCon
     cfg = load_config(config_dir)
     with patch("arc.dispatcher.dispatch_acpx", new_callable=AsyncMock) as mock_acpx:
         from arc.types import DispatchResult
-        mock_acpx.return_value = DispatchResult("ok", "claude-haiku-4-5", "acpx")
-        await dispatch("Q", coach, model_override="claude-haiku-4-5", config=cfg)
+        mock_acpx.return_value = DispatchResult("ok", "haiku", "acpx")
+        await dispatch("Q", coach, model_override="haiku", config=cfg)
     called_model = mock_acpx.call_args[0][2]
-    assert called_model == "claude-haiku-4-5"
+    assert called_model == "haiku"
 
 
 async def test_dispatch_model_override_not_allowed(config_dir: Path, coach: AgentConfig) -> None:
     cfg = load_config(config_dir)
     with pytest.raises(DispatchError, match="not allowed"):
-        await dispatch("Q", coach, model_override="claude-opus-4-7", config=cfg)
-
-
-async def test_dispatch_unknown_model(config_dir: Path, coach: AgentConfig) -> None:
-    cfg = load_config(config_dir)
-    coach.allowed_models = ["gpt-4"]
-    with pytest.raises(DispatchError, match="Unknown model type"):
-        await dispatch("Q", coach, model_override="gpt-4", config=cfg)
+        await dispatch("Q", coach, model_override="opus", config=cfg)
 
 
 # --- acpx dispatch ---
@@ -83,11 +76,11 @@ async def test_dispatch_acpx_success(config_dir: Path, coach: AgentConfig) -> No
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
         result = await dispatch_acpx(
-            "Hello", coach, "claude-sonnet-4-6", None, True, cfg
+            "Hello", coach, "sonnet", None, True, cfg
         )
 
     assert result.output == "Coach response"
-    assert result.model_used == "claude-sonnet-4-6"
+    assert result.model_used == "sonnet"
     assert result.dispatch_type == "acpx"
 
     cmd = mock_exec.call_args[0]
@@ -113,7 +106,7 @@ async def test_dispatch_acpx_session(config_dir: Path, coach: AgentConfig) -> No
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
         await dispatch_acpx(
-            "msg", coach, "claude-sonnet-4-6", "coach-thread-123", False, cfg
+            "msg", coach, "sonnet", "coach-thread-123", False, cfg
         )
 
     # Two calls: ensure then prompt. Check the prompt call (last).
@@ -141,7 +134,7 @@ async def test_dispatch_acpx_failure(config_dir: Path, coach: AgentConfig) -> No
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
         with pytest.raises(DispatchError, match="acpx exited 1"):
-            await dispatch_acpx("Q", coach, "claude-sonnet-4-6", None, True, cfg)
+            await dispatch_acpx("Q", coach, "sonnet", None, True, cfg)
 
 
 async def test_dispatch_acpx_timeout(config_dir: Path, coach: AgentConfig) -> None:
@@ -157,7 +150,7 @@ async def test_dispatch_acpx_timeout(config_dir: Path, coach: AgentConfig) -> No
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
         with patch("asyncio.wait_for", side_effect=_asyncio.TimeoutError):
             with pytest.raises(DispatchError, match="timed out"):
-                await dispatch_acpx("Q", coach, "claude-sonnet-4-6", None, True, cfg)
+                await dispatch_acpx("Q", coach, "sonnet", None, True, cfg)
 
 
 async def test_dispatch_acpx_prompt_tempfile_cleaned_up(
@@ -179,7 +172,7 @@ async def test_dispatch_acpx_prompt_tempfile_cleaned_up(
 
     with patch("tempfile.NamedTemporaryFile", side_effect=tracking_ntf):
         with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
-            await dispatch_acpx("Q", coach, "claude-sonnet-4-6", None, True, cfg)
+            await dispatch_acpx("Q", coach, "sonnet", None, True, cfg)
 
     for path in created_files:
         assert not Path(path).exists(), f"Temp file not cleaned up: {path}"
@@ -194,7 +187,7 @@ async def test_dispatch_acpx_uses_model_flag(
     mock_proc.communicate = AsyncMock(return_value=(b"ok", b""))
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
-        await dispatch_acpx("Q", coach, "claude-haiku-4-5", None, True, cfg)
+        await dispatch_acpx("Q", coach, "haiku", None, True, cfg)
 
     cmd = mock_exec.call_args[0]
     assert "--model" in cmd
@@ -212,7 +205,7 @@ async def test_dispatch_acpx_format_quiet(
     mock_proc.communicate = AsyncMock(return_value=(b"ok", b""))
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
-        await dispatch_acpx("Q", coach, "claude-sonnet-4-6", None, True, cfg)
+        await dispatch_acpx("Q", coach, "sonnet", None, True, cfg)
 
     cmd = mock_exec.call_args[0]
     assert "--format" in cmd

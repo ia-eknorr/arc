@@ -60,8 +60,8 @@ def coach_yaml(arc_dir: Path, tmp_path: Path) -> dict:
         "description": "Test coach",
         "workspace": str(ws),
         "system_prompt_files": ["AGENTS.md"],
-        "model": "claude-sonnet-4-6",
-        "allowed_models": ["claude-sonnet-4-6", "claude-haiku-4-5"],
+        "model": "sonnet",
+        "allowed_models": ["sonnet", "haiku"],
         "permission_mode": "approve-all",
         "discord": {"channel_id": "9999"},
     }
@@ -152,8 +152,8 @@ async def test_status_tab_renders(arc_dir: Path, coach_yaml: dict) -> None:
                         name="coach",
                         workspace="/workspace/fitness-coach",
                         system_prompt_files=[],
-                        model="claude-sonnet-4-6",
-                        allowed_models=["claude-sonnet-4-6"],
+                        model="sonnet",
+                        allowed_models=["sonnet"],
                         discord={"channel_id": "9999"},
                     )
                 ]
@@ -224,11 +224,11 @@ async def test_agent_model_change_writes_yaml(arc_dir: Path, coach_yaml: dict) -
             from arc.tui.screens.agents import _load_raw, _save_raw
             with patch("arc.tui.screens.agents._agents_dir", return_value=arc_dir / "agents"):
                 data = _load_raw("coach")
-                data["model"] = "claude-haiku-4-5"
+                data["model"] = "haiku"
                 _save_raw("coach", data)
 
             saved = yaml.safe_load((arc_dir / "agents" / "coach.yaml").read_text())
-            assert saved["model"] == "claude-haiku-4-5"
+            assert saved["model"] == "haiku"
 
 
 @pytest.mark.asyncio
@@ -241,8 +241,8 @@ async def test_agent_create_writes_yaml(arc_dir: Path) -> None:
             "description": "",
             "workspace": "/tmp/newbot",
             "system_prompt_files": [],
-            "model": "claude-sonnet-4-6",
-            "allowed_models": ["claude-sonnet-4-6"],
+            "model": "sonnet",
+            "allowed_models": ["sonnet"],
             "permission_mode": "approve-all",
             "discord": {},
         }
@@ -250,7 +250,7 @@ async def test_agent_create_writes_yaml(arc_dir: Path) -> None:
 
     saved = yaml.safe_load((arc_dir / "agents" / "newbot.yaml").read_text())
     assert saved["name"] == "newbot"
-    assert saved["model"] == "claude-sonnet-4-6"
+    assert saved["model"] == "sonnet"
 
 
 @pytest.mark.asyncio
@@ -490,9 +490,9 @@ def test_logs_load_jsonl_parses_entries(arc_dir: Path) -> None:
 
     path = arc_dir / "logs" / "routing.jsonl"
     path.write_text(
-        '{"timestamp": "2026-05-01T08:00:00+00:00", "agent": "coach", "model": "claude-sonnet-4-6",'
+        '{"timestamp": "2026-05-01T08:00:00+00:00", "agent": "coach", "model": "sonnet",'
         ' "source": "cli", "one_shot": true, "prompt_preview": "hello"}\n'
-        '{"timestamp": "2026-05-01T09:00:00+00:00", "agent": "coach", "model": "claude-haiku-4-5",'
+        '{"timestamp": "2026-05-01T09:00:00+00:00", "agent": "coach", "model": "haiku",'
         ' "source": "discord", "one_shot": false, "prompt_preview": "hi"}\n'
     )
     entries = _load_jsonl(path)
@@ -535,7 +535,7 @@ def test_logs_detail_show_routing() -> None:
     entry = {
         "timestamp": "2026-05-01T08:00:00+00:00",
         "agent": "coach",
-        "model": "claude-sonnet-4-6",
+        "model": "sonnet",
         "dispatch_type": "acpx",
         "source": "cli",
         "one_shot": True,
@@ -570,7 +570,7 @@ async def test_logs_tab_renders(arc_dir: Path) -> None:
     routing_log = arc_dir / "logs" / "routing.jsonl"
     routing_log.write_text(
         '{"timestamp": "2026-05-01T08:13:09.131782+00:00", "agent": "coach",'
-        ' "model": "claude-sonnet-4-6", "dispatch_type": "acpx",'
+        ' "model": "sonnet", "dispatch_type": "acpx",'
         ' "source": "cli", "one_shot": true, "prompt_preview": "hello"}\n'
     )
     with _patch_config(arc_dir):

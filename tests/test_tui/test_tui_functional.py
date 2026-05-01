@@ -65,7 +65,7 @@ logging:
 def with_agents(arc_dir: Path, tmp_path: Path) -> Path:
     ws = tmp_path / "workspace"
     ws.mkdir()
-    for name, model in [("coach", "claude-sonnet-4-6"), ("trainer", "claude-haiku-4-5")]:
+    for name, model in [("coach", "sonnet"), ("trainer", "haiku")]:
         (arc_dir / "agents" / f"{name}.yaml").write_text(
             yaml.dump({
                 "name": name,
@@ -159,7 +159,7 @@ async def test_status_pane_loads_content(arc_dir: Path, with_agents: Path) -> No
         "agents": [
             {
                 "name": "coach",
-                "model": "claude-sonnet-4-6",
+                "model": "sonnet",
                 "workspace": "/ws/coach",
                 "discord_channel": "9999",
             }

@@ -39,7 +39,7 @@ def jobs_file(cron_config: ArcConfig) -> Path:
             "heartbeat": {
                 "schedule": "*/30 * * * *",
                 "agent": "coach",
-                "model": "claude-haiku-4-5",
+                "model": "haiku",
                 "prompt": "Read HEARTBEAT.md.",
                 "notify": "discord_on_urgent",
                 "enabled": True,
@@ -73,7 +73,7 @@ def test_load_jobs_parses_all(cron_config: ArcConfig, jobs_file: Path) -> None:
 def test_load_jobs_fields(cron_config: ArcConfig, jobs_file: Path) -> None:
     jobs = {j.name: j for j in load_jobs(cron_config)}
     hb = jobs["heartbeat"]
-    assert hb.model == "claude-haiku-4-5"
+    assert hb.model == "haiku"
     assert hb.notify == "discord_on_urgent"
     assert hb.enabled is True
 

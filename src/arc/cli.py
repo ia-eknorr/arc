@@ -80,7 +80,7 @@ def ask(
     agent: Annotated[str | None, typer.Option("--agent", "-a", help="Agent name.")] = None,
     model: Annotated[
         str | None,
-        typer.Option("--model", "-m", help="Override model (claude-haiku-4-5, ollama/qwen3:8b)"),
+        typer.Option("--model", "-m", help="Override model (sonnet, haiku, ollama/qwen3:8b)"),
     ] = None,
     pretty: Annotated[bool, typer.Option("--pretty", help="Show dispatch info header.")] = False,
     config_dir: Annotated[
@@ -109,7 +109,7 @@ def ask(
             name="_inline",
             workspace=str(Path.cwd()),
             system_prompt_files=[],
-            model=model or "claude-sonnet-4-6",
+            model=model or "sonnet",
             allowed_models=[model] if model else [],
         )
 
@@ -908,7 +908,7 @@ def agent_create(
 
     name = name or typer.prompt("Agent name")
     workspace = workspace or typer.prompt("Workspace path")
-    model = model or typer.prompt("Model", default="claude-sonnet-4-6")
+    model = model or typer.prompt("Model", default="sonnet")
 
     dest = agents_dir / f"{name}.yaml"
     if dest.exists():

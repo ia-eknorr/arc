@@ -63,8 +63,8 @@ def coach_agent_yaml(config_dir: Path, workspace: Path) -> dict:
         "description": "Test coach agent",
         "workspace": str(workspace),
         "system_prompt_files": ["AGENTS.md", "IDENTITY.md", "SOUL.md"],
-        "model": "claude-sonnet-4-6",
-        "allowed_models": ["claude-sonnet-4-6", "claude-haiku-4-5", "ollama/qwen3:8b"],
+        "model": "sonnet",
+        "allowed_models": ["sonnet", "haiku", "ollama/qwen3:8b"],
         "permission_mode": "bypassPermissions",
         "discord": {"channel_id": "9999"},
     }

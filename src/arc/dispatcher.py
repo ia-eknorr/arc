@@ -1,5 +1,4 @@
 import asyncio
-import re
 import tempfile
 from pathlib import Path
 
@@ -35,10 +34,8 @@ async def dispatch(
 
     if model.startswith("ollama/"):
         return await dispatch_ollama(prompt, agent, model, cfg)
-    elif model.startswith("claude-"):
-        return await dispatch_acpx(prompt, agent, model, session_name, one_shot, cfg)
     else:
-        raise DispatchError(f"Unknown model type: '{model}'. Expected 'claude-*' or 'ollama/*'.")
+        return await dispatch_acpx(prompt, agent, model, session_name, one_shot, cfg)
 
 
 _ACPX_PERMISSION_MAP = {
@@ -65,16 +62,6 @@ def _acpx_permission_flag(permission_mode: str) -> str:
     return flag
 
 
-def _acpx_model_alias(model: str) -> str:
-    """Convert a full Claude model ID to the acpx model alias.
-
-    acpx advertises short aliases (sonnet, haiku) not full IDs like claude-sonnet-4-6.
-    Strip the 'claude-' prefix and version suffix to get the family name.
-    """
-    name = model.removeprefix("claude-")
-    return re.sub(r"-\d.*$", "", name)
-
-
 def _build_acpx_base(
     config: ArcConfig,
     agent: AgentConfig,
@@ -87,7 +74,7 @@ def _build_acpx_base(
         config.acpx.command,
         "--format", "quiet",
         "--cwd", agent.workspace,
-        "--model", _acpx_model_alias(model),
+        "--model", model,
         perm_flag,
     ]
     if system_prompt:

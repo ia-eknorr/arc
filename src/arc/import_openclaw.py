@@ -10,16 +10,16 @@ log = logging.getLogger("arc.import")
 _IDENTITY_FILES = ["AGENTS.md", "IDENTITY.md", "SOUL.md", "USER.md", "TOOLS.md"]
 
 _MODEL_MAP = {
-    "anthropic/claude-sonnet-4-6": "claude-sonnet-4-6",
-    "anthropic/claude-haiku-4-5": "claude-haiku-4-5",
-    "anthropic/claude-opus-4-7": "claude-opus-4-7",
+    "anthropic/claude-sonnet-4-6": "sonnet",
+    "anthropic/claude-haiku-4-5": "haiku",
+    "anthropic/claude-opus-4-7": "opus",
 }
 
 
 def _map_model(oc_model: str | dict) -> str:
-    """Convert OpenClaw model spec to arc model string."""
+    """Convert OpenClaw model spec to an acpx model alias."""
     if isinstance(oc_model, dict):
-        oc_model = oc_model.get("primary", "claude-sonnet-4-6")
+        oc_model = oc_model.get("primary", "sonnet")
     return _MODEL_MAP.get(oc_model, oc_model.removeprefix("anthropic/"))
 
 
@@ -56,7 +56,7 @@ def convert_agents(openclaw_json: dict) -> list[dict]:
             "description": oc_agent.get("description", ""),
             "workspace": str(workspace),
             "system_prompt_files": identity_files,
-            "model": _map_model(oc_agent.get("model", "claude-sonnet-4-6")),
+            "model": _map_model(oc_agent.get("model", "sonnet")),
             "allowed_models": [],
             "permission_mode": "approve-all",
         }

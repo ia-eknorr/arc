@@ -65,7 +65,7 @@ _DAEMON_RESPONSE = {
     "agents": [
         {
             "name": "coach",
-            "model": "claude-sonnet-4-6",
+            "model": "sonnet",
             "workspace": "/workspace/fitness-coach",
             "discord_channel": "9999",
         }
@@ -92,7 +92,7 @@ def test_status_daemon_running_shows_agent(config_dir: Path) -> None:
     with patch("arc.ipc.request", new_callable=AsyncMock, return_value=_DAEMON_RESPONSE):
         result = runner.invoke(app, ["status", "--config-dir", str(config_dir)])
     assert "coach" in result.output
-    assert "claude-sonnet-4-6" in result.output
+    assert "sonnet" in result.output
 
 
 def test_status_daemon_running_shows_cron(config_dir: Path) -> None:
@@ -126,7 +126,7 @@ def test_status_offline_shows_agents_from_config(
     with patch("arc.ipc.request", new_callable=AsyncMock, return_value=None):
         result = runner.invoke(app, ["status", "--config-dir", str(config_dir)])
     assert "coach" in result.output
-    assert "claude-sonnet-4-6" in result.output
+    assert "sonnet" in result.output
 
 
 def test_status_offline_no_agents(config_dir: Path) -> None:

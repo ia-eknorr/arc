@@ -9,8 +9,8 @@ from arc.types import AgentConfig
 def test_load_agent(config_dir: Path, coach_agent_yaml: dict) -> None:
     agent = load_agent("coach", config_dir)
     assert agent.name == "coach"
-    assert agent.model == "claude-sonnet-4-6"
-    assert "claude-haiku-4-5" in agent.allowed_models
+    assert agent.model == "sonnet"
+    assert "haiku" in agent.allowed_models
 
 
 def test_load_agent_not_found(config_dir: Path) -> None:
@@ -61,7 +61,7 @@ async def test_build_system_prompt_missing_file(workspace: Path) -> None:
         name="test",
         workspace=str(workspace),
         system_prompt_files=["MISSING.md", "IDENTITY.md"],
-        model="claude-sonnet-4-6",
+        model="sonnet",
     )
     prompt = await build_system_prompt(agent)
     # Missing file is skipped, existing file is included
@@ -74,7 +74,7 @@ async def test_build_system_prompt_all_missing(workspace: Path) -> None:
         name="test",
         workspace=str(workspace),
         system_prompt_files=["NOPE.md"],
-        model="claude-sonnet-4-6",
+        model="sonnet",
     )
     prompt = await build_system_prompt(agent)
     assert prompt == ""

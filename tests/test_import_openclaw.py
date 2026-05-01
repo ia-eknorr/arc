@@ -78,11 +78,11 @@ def _make_oc_dir(tmp_path: Path, workspace: Path) -> Path:
 
 
 def test_map_model_string() -> None:
-    assert _map_model("anthropic/claude-sonnet-4-6") == "claude-sonnet-4-6"
+    assert _map_model("anthropic/claude-sonnet-4-6") == "sonnet"
 
 
 def test_map_model_dict() -> None:
-    assert _map_model({"primary": "anthropic/claude-haiku-4-5"}) == "claude-haiku-4-5"
+    assert _map_model({"primary": "anthropic/claude-haiku-4-5"}) == "haiku"
 
 
 def test_map_model_unknown() -> None:
@@ -145,7 +145,7 @@ def test_convert_agents(tmp_path: Path) -> None:
     assert len(agents) == 1
     a = agents[0]
     assert a["name"] == "coach"
-    assert a["model"] == "claude-sonnet-4-6"
+    assert a["model"] == "sonnet"
     assert "AGENTS.md" in a["system_prompt_files"]
     assert a["discord"]["channel_id"] == "9999"
 
@@ -214,7 +214,7 @@ def test_import_from_path(tmp_path: Path) -> None:
     assert not summary["errors"]
 
     coach_yaml = yaml.safe_load((arc_dir / "agents" / "coach.yaml").read_text())
-    assert coach_yaml["model"] == "claude-sonnet-4-6"
+    assert coach_yaml["model"] == "sonnet"
     assert coach_yaml["discord"]["channel_id"] == "9999"
 
 

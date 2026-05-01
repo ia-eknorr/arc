@@ -253,19 +253,19 @@ async def test_model_set(config_dir: Path, coach_agent_yaml: dict) -> None:
     bot, daemon = _make_bot()
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
-    msg = _make_message(bot.user, "/model claude-haiku-4-5", channel_id="9999")
+    msg = _make_message(bot.user, "/model haiku", channel_id="9999")
 
     with patch("arc.discord_bridge.resolve_agent_for_channel", return_value=agent):
         await bot.on_message(msg)
 
-    daemon.set_model_override.assert_called_once_with("9999", "claude-haiku-4-5")
+    daemon.set_model_override.assert_called_once_with("9999", "haiku")
     msg.reply.assert_awaited_once()
-    assert "claude-haiku-4-5" in msg.reply.call_args[0][0]
+    assert "haiku" in msg.reply.call_args[0][0]
 
 
 async def test_model_reset(config_dir: Path, coach_agent_yaml: dict) -> None:
     bot, daemon = _make_bot()
-    daemon.model_overrides["9999"] = "claude-haiku-4-5"
+    daemon.model_overrides["9999"] = "haiku"
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
     msg = _make_message(bot.user, "/model reset", channel_id="9999")
@@ -292,7 +292,7 @@ async def test_model_unknown(config_dir: Path, coach_agent_yaml: dict) -> None:
 
 async def test_model_show_current(config_dir: Path, coach_agent_yaml: dict) -> None:
     bot, daemon = _make_bot()
-    daemon.model_overrides["9999"] = "claude-haiku-4-5"
+    daemon.model_overrides["9999"] = "haiku"
     from arc.agents import load_agent
     agent = load_agent("coach", config_dir)
     msg = _make_message(bot.user, "/model", channel_id="9999")
@@ -300,7 +300,7 @@ async def test_model_show_current(config_dir: Path, coach_agent_yaml: dict) -> N
     with patch("arc.discord_bridge.resolve_agent_for_channel", return_value=agent):
         await bot.on_message(msg)
 
-    assert "claude-haiku-4-5" in msg.reply.call_args[0][0]
+    assert "haiku" in msg.reply.call_args[0][0]
 
 
 # --- send_to_default_channel ---

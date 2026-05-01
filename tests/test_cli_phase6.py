@@ -46,7 +46,7 @@ def test_agent_list_empty(config_dir: Path) -> None:
 def test_agent_show_coach(config_dir: Path, coach_agent_yaml: dict) -> None:
     result = runner.invoke(app, ["agent", "show", "coach", "--config-dir", str(config_dir)])
     assert result.exit_code == 0
-    assert "claude-sonnet-4-6" in result.output
+    assert "sonnet" in result.output
 
 
 def test_agent_show_not_found(config_dir: Path) -> None:
@@ -63,7 +63,7 @@ def test_agent_create_writes_yaml(config_dir: Path, workspace: Path) -> None:
     result = runner.invoke(app, [
         "agent", "create",
         "--name", "newbot",
-        "--model", "claude-haiku-4-5",
+        "--model", "haiku",
         "--workspace", str(workspace),
         "--config-dir", str(config_dir),
     ])
@@ -72,7 +72,7 @@ def test_agent_create_writes_yaml(config_dir: Path, workspace: Path) -> None:
     assert agent_file.exists()
     data = yaml.safe_load(agent_file.read_text())
     assert data["name"] == "newbot"
-    assert data["model"] == "claude-haiku-4-5"
+    assert data["model"] == "haiku"
 
 
 def test_agent_create_already_exists(
@@ -81,7 +81,7 @@ def test_agent_create_already_exists(
     result = runner.invoke(app, [
         "agent", "create",
         "--name", "coach",
-        "--model", "claude-haiku-4-5",
+        "--model", "haiku",
         "--workspace", str(workspace),
         "--config-dir", str(config_dir),
     ])
@@ -155,7 +155,7 @@ def test_log_routing_shows_entries(config_dir: Path) -> None:
     entry = {
         "timestamp": "2026-04-30T10:00:00Z",
         "agent": "coach",
-        "model": "claude-sonnet-4-6",
+        "model": "sonnet",
         "dispatch_type": "acpx",
         "source": "cli",
         "one_shot": True,
