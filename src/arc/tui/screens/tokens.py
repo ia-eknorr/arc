@@ -95,9 +95,9 @@ class TokensPane(Widget):
             coros.append(_run_cb(cb, ["--project", Path(a.workspace).name]))
 
         results = await asyncio.gather(*coros)
-        self._render(results[0], list(zip(agents, results[1:])))
+        self._show(results[0], list(zip(agents, results[1:])))
 
-    def _render(self, g: dict, per_agent: list) -> None:
+    def _show(self, g: dict, per_agent: list) -> None:
         cur = g.get("currency", "USD")
         today_cost = g.get("today", {}).get("cost", 0.0)
         today_calls = g.get("today", {}).get("calls", 0)
