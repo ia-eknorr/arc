@@ -1152,8 +1152,18 @@ def config_set(
 @app.command("version")
 def version_cmd() -> None:
     """Print arc version."""
-    from importlib.metadata import PackageNotFoundError, version
+    from pathlib import Path
+    import re
 
+    # Read directly from pyproject.toml so git pull alone updates the version
+    pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
+    if pyproject.exists():
+        match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(), re.MULTILINE)
+        if match:
+            typer.echo(f"arc {match.group(1)}")
+            return
+
+    from importlib.metadata import PackageNotFoundError, version
     try:
         ver = version("arc-cli")
     except PackageNotFoundError:
