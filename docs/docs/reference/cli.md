@@ -143,6 +143,7 @@ arc tokens [OPTIONS]
 | `--agent` | `-a` | string | | Scope to a single agent's workspace |
 | `--period` | `-p` | string | `today` | Period: `today`, `week`, `month`, `all` |
 | `--cmd` | | string | `status` | codeburn subcommand: `status`, `report`, `today`, `month`, `export` |
+| `--all` | | flag | false | Show global spend across all projects (bypasses agent scoping) |
 
 Requires `codeburn` to be installed: `npm install -g codeburn`
 
@@ -166,6 +167,10 @@ arc tokens --cmd month
 
 # Export to CSV
 arc tokens --cmd export
+
+# Global spend across all Claude Code projects (not just arc agents)
+arc tokens --all
+arc tokens --all --period month
 ```
 
 ---
@@ -570,13 +575,21 @@ arc log cron --job weekly-plan --last 3
 ### arc log tail
 
 ```
-arc log tail
+arc log tail [OPTIONS]
 ```
 
-Runs `tail -f` on both `routing.jsonl` and `cron.jsonl`. Press Ctrl+C to stop.
+| Option | Short | Type | Default | Description |
+|---|---|---|---|---|
+| `--agent` | `-a` | string | | Filter routing log to a specific agent |
+
+Without `--agent`, runs `tail -f` on both `routing.jsonl` and `cron.jsonl`. With `--agent`, tails only `routing.jsonl` and prints lines matching that agent name. Press Ctrl+C to stop.
 
 ```bash
+# Tail all logs
 arc log tail
+
+# Tail only coach agent activity
+arc log tail --agent coach
 ```
 
 ---
@@ -624,6 +637,29 @@ arc config set discord.enabled true
 arc config set discord.rate_limit.messages_per_minute 10
 arc config set timeouts.acpx_request 600
 ```
+
+---
+
+## arc ping
+
+Check reachability of the daemon, acpx binary, and all configured Ollama endpoints.
+
+```
+arc ping
+```
+
+Exits with code 0 if all checks pass, 1 if any fail.
+
+**Example output:**
+
+```
+daemon    ok    ~/.arc/arc.sock
+acpx      ok    /usr/local/bin/acpx
+ollama    ok    local @ http://localhost:11434/v1
+ollama    fail  kyle @ http://kyle.tailnet:8080/v1
+```
+
+Useful for verifying a fresh install or diagnosing connectivity issues without running a full dispatch.
 
 ---
 
