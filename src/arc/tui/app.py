@@ -8,7 +8,9 @@ from textual.widgets import Footer, TabbedContent, TabPane
 from arc.tui.screens.agents import AgentsPane
 from arc.tui.screens.config import ConfigPane
 from arc.tui.screens.cron import CronPane
+from arc.tui.screens.logs import LogsPane
 from arc.tui.screens.status import StatusPane
+from arc.tui.screens.tokens import TokensPane
 
 
 class ArcTUI(App[None]):
@@ -64,9 +66,13 @@ class ArcTUI(App[None]):
                 yield CronPane(id="cron-pane")
             with TabPane("Config", id="config"):
                 yield ConfigPane(id="config-pane")
+            with TabPane("Tokens", id="tokens"):
+                yield TokensPane(id="tokens-pane")
+            with TabPane("Logs", id="logs"):
+                yield LogsPane(id="logs-pane")
         yield Footer()
 
-    _TAB_ORDER = ["status", "agents", "cron", "config"]
+    _TAB_ORDER = ["status", "agents", "cron", "config", "tokens", "logs"]
 
     def action_next_tab(self) -> None:
         tc = self.query_one(TabbedContent)
@@ -86,6 +92,7 @@ class ArcTUI(App[None]):
             "--content-tab-agents": "#agents-list",
             "--content-tab-cron": "#cron-list",
             "--content-tab-config": "#config-list",
+            "--content-tab-logs": "#logs-list",
         }
         selector = focus_map.get(event.tab.id)
         if selector:
