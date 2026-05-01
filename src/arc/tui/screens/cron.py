@@ -101,6 +101,10 @@ class CronPane(Widget):
         Binding("l", "focus_detail", "Detail", show=False),
         Binding("h", "focus_list", "List", show=False),
         Binding("enter", "focus_detail", "Detail", show=False),
+        Binding("j", "cursor_down", "Down", show=False),
+        Binding("k", "cursor_up", "Up", show=False),
+        Binding("g", "scroll_home", "Top", show=False),
+        Binding("G", "scroll_end", "Bottom", show=False),
     ]
 
     DEFAULT_CSS = """
@@ -139,6 +143,18 @@ class CronPane(Widget):
 
     def on_mount(self) -> None:
         self._refresh_list()
+
+    def action_cursor_down(self) -> None:
+        self.query_one("#cron-list", VimListView).action_cursor_down()
+
+    def action_cursor_up(self) -> None:
+        self.query_one("#cron-list", VimListView).action_cursor_up()
+
+    def action_scroll_home(self) -> None:
+        self.query_one("#cron-list", VimListView).action_scroll_home()
+
+    def action_scroll_end(self) -> None:
+        self.query_one("#cron-list", VimListView).action_scroll_end()
 
     def _refresh_list(self) -> None:
         cfg = load_config()

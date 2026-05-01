@@ -63,3 +63,19 @@ class ArcTUI(App[None]):
             with TabPane("Config", id="config"):
                 yield ConfigPane(id="config-pane")
         yield Footer()
+
+    def on_tabbed_content_tab_activated(
+        self, event: TabbedContent.TabActivated
+    ) -> None:
+        """Focus the list widget whenever a tab becomes active."""
+        focus_map = {
+            "--content-tab-agents": "#agents-list",
+            "--content-tab-cron": "#cron-list",
+            "--content-tab-config": "#config-list",
+        }
+        selector = focus_map.get(event.tab.id)
+        if selector:
+            try:
+                self.query_one(selector).focus()
+            except Exception:
+                pass
