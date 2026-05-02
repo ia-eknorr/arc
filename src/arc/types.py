@@ -28,6 +28,8 @@ class CronJob:
     model: str | None = None
     notify: str | None = None
     enabled: bool = True
+    # Shell command run before the agent; non-zero exit skips agent invocation.
+    pre_check: str | None = None
 
 
 @dataclass

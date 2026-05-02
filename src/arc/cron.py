@@ -35,6 +35,7 @@ def load_jobs(config: ArcConfig) -> list[CronJob]:
             model=d.get("model"),
             notify=d.get("notify"),
             enabled=d.get("enabled", True),
+            pre_check=d.get("pre_check"),
         ))
     return jobs
 

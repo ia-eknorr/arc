@@ -237,6 +237,16 @@ class ArcDaemon:
     async def run_cron_job(self, job: CronJob) -> None:
         """Execute a scheduled cron job and notify Discord if configured."""
         log.info(f"cron: running {job.name}")
+        if job.pre_check:
+            proc = await asyncio.create_subprocess_shell(
+                job.pre_check,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.wait()
+            if proc.returncode != 0:
+                log.debug(f"cron: {job.name} skipped (pre_check returned {proc.returncode})")
+                return
         try:
             result = await self.handle_request(
                 {
