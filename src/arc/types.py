@@ -22,8 +22,9 @@ class AgentConfig:
 class CronJob:
     name: str
     schedule: str
-    agent: str
-    prompt: str
+    agent: str | None = None
+    prompt: str | None = None
+    command: str | None = None
     description: str = ""
     model: str | None = None
     notify: str | None = None

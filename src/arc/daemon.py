@@ -248,14 +248,17 @@ class ArcDaemon:
                 log.debug(f"cron: {job.name} skipped (pre_check returned {proc.returncode})")
                 return
         try:
-            result = await self.handle_request(
-                {
-                    "prompt": job.prompt,
-                    "agent": job.agent,
-                    "model": job.model,
-                    "source": "cron",
-                }
-            )
+            if job.command:
+                result = await self._run_cron_command(job.command)
+            else:
+                result = await self.handle_request(
+                    {
+                        "prompt": job.prompt,
+                        "agent": job.agent,
+                        "model": job.model,
+                        "source": "cron",
+                    }
+                )
 
             if result["status"] == "ok":
                 output = result["result"]
@@ -265,7 +268,7 @@ class ArcDaemon:
                     or (job.notify == "discord_if_nonempty" and output.strip())
                 )
                 if should_notify:
-                    await self._notify_discord(output, job.agent)
+                    await self._notify_discord(output, job.agent or job.command or job.name)
 
             append_jsonl(
                 Path(self.config.daemon.socket_path).expanduser().parent / "logs" / "cron.jsonl",
@@ -278,6 +281,18 @@ class ArcDaemon:
             )
         except Exception as e:
             log.error(f"cron: {job.name} failed: {e}")
+
+    async def _run_cron_command(self, command: str) -> dict:
+        """Run a shell command as a cron job, returning its stdout as the result."""
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            return {"status": "error", "error": stderr.decode().strip() or f"exited {proc.returncode}"}
+        return {"status": "ok", "result": stdout.decode().strip()}
 
     async def _handle_cron_run(self, job_name: str) -> dict:
         """Run a named cron job manually, with Discord notify and logging."""
